@@ -207,7 +207,7 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 					break;
 				}
 				case NAME_DISPLAY_OPTION_CODE_SCREEN_NAME: {
-					holder.name.setText("@" + status.user_screen_name);
+					holder.name.setText(status.user_screen_name);
 					holder.screen_name.setText(null);
 					holder.screen_name.setVisibility(View.GONE);
 					break;
