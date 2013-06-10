@@ -1,7 +1,5 @@
 package org.mariotaku.twidere.view;
 
-import org.mariotaku.twidere.view.iface.IExtendedView;
-
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
@@ -11,7 +9,7 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.Shader;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
-import android.widget.ImageView;
+import org.mariotaku.twidere.view.iface.IExtendedView;
 
 public class ProfileBannerImageView extends ClickableImageView implements IExtendedView {
 
@@ -45,8 +43,12 @@ public class ProfileBannerImageView extends ClickableImageView implements IExten
 
 	@Override
 	protected void onMeasure(final int widthMeasureSpec, final int heightMeasureSpec) {
-		final int width = MeasureSpec.getSize(widthMeasureSpec);
-		setMeasuredDimension(width, width / 2);
+		final int width = MeasureSpec.getSize(widthMeasureSpec), height = width / 2;
+		setMeasuredDimension(width, height);
+		if (width > 0) {		
+			mShader = new LinearGradient(width / 2, 0, width / 2, height, 0xffffffff, 0x00ffffff, Shader.TileMode.CLAMP);
+		}
+		super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
 	}
 
 	@Override
@@ -57,7 +59,6 @@ public class ProfileBannerImageView extends ClickableImageView implements IExten
 	@Override
 	protected final void onSizeChanged(final int w, final int h, final int oldw, final int oldh) {
 		super.onSizeChanged(w, h, oldw, oldh);
-		mShader = new LinearGradient(w / 2, 0, w / 2, h, 0xffffffff, 0x00ffffff, Shader.TileMode.CLAMP);
 		if (mOnSizeChangedListener != null) {
 			mOnSizeChangedListener.onSizeChanged(this, w, h, oldw, oldh);
 		}
