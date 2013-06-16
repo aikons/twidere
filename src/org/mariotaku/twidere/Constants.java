@@ -52,14 +52,13 @@ public interface Constants extends TwitterConstants {
 	public static final String TIMELINE_POSITIONS_PREFERENCES_NAME = "timeline_positions";
 
 	public static final String DATABASES_NAME = "twidere.sqlite";
-	public static final int DATABASES_VERSION = 42;
+	public static final int DATABASES_VERSION = 43;
 
-	// The following 4 constants are not included in source code, you'd better
-	// use your own.
-	public static final String TWITTER_CONSUMER_KEY = PrivateConstants.TWITTER_CONSUMER_KEY;
-	public static final String TWITTER_CONSUMER_SECRET = PrivateConstants.TWITTER_CONSUMER_SECRET;
-	public static final String GOOGLE_MAPS_API_KEY_RELEASE = PrivateConstants.GOOGLE_MAPS_API_KEY_RELEASE;
-	public static final String GOOGLE_MAPS_API_KEY_DEBUG = PrivateConstants.GOOGLE_MAPS_API_KEY_DEBUG;
+	public static final String TWITTER_CONSUMER_KEY = "uAFVpMhBntJutfVj6abfA";
+	public static final String TWITTER_CONSUMER_SECRET = "JARXkJTfxo0F8MyctYy9bUmrLISjo8vXAHsZHYuk2E";
+
+	public static final String GOOGLE_MAPS_API_KEY_RELEASE = "0kjPwJOe_zwYjzGc9uYak7vhm_Sf3eob-2L3Xzw";
+	public static final String GOOGLE_MAPS_API_KEY_DEBUG = "0kjPwJOe_zwY9p6kT-kygu4mxwysyOOpfkaXqTA";
 
 	public static final String GOOGLE_MAPS_API_KEY = DEBUG ? GOOGLE_MAPS_API_KEY_DEBUG : GOOGLE_MAPS_API_KEY_RELEASE;
 
@@ -140,7 +139,7 @@ public interface Constants extends TwitterConstants {
 	public static final String PREFERENCE_KEY_CLEAR_CACHE = "clear_cache";
 	public static final String PREFERENCE_KEY_DISPLAY_PROFILE_IMAGE = "display_profile_image";
 	public static final String PREFERENCE_KEY_IMAGE_PREVIEW_DISPLAY_OPTION = "image_preview_display_option";
-	public static final String PREFERENCE_KEY_COMPOSE_BUTTON = "bottom_compose_button";
+	public static final String PREFERENCE_KEY_BOTTOM_COMPOSE_BUTTON = "bottom_compose_button";
 	public static final String PREFERENCE_KEY_LEFTSIDE_COMPOSE_BUTTON = "leftside_compose_button";
 	public static final String PREFERENCE_KEY_ATTACH_LOCATION = "attach_location";
 	public static final String PREFERENCE_KEY_GZIP_COMPRESSING = "gzip_compressing";
@@ -213,6 +212,8 @@ public interface Constants extends TwitterConstants {
 	public static final String PREFERENCE_KEY_LIGHT_THEME_COLOR = "light_theme_color";
 	public static final String PREFERENCE_KEY_LINK_TO_QUOTED_TWEET = "link_to_quoted_tweet";
 	public static final String PREFERENCE_KEY_BACKGROUND_TOAST_NOTIFICATION = "background_toast_notification";
+	public static final String PREFERENCE_KEY_COMPOSE_QUIT_ACTION = "compose_quit_action";
+	public static final String PREFERENCE_KEY_NO_CLOSE_AFTER_TWEET_SENT = "no_close_after_tweet_sent";
 
 	public static final String PREFERENCE_DEFAULT_QUOTE_FORMAT = "RT @" + FORMAT_PATTERN_NAME + ": "
 			+ FORMAT_PATTERN_TEXT;
@@ -238,6 +239,10 @@ public interface Constants extends TwitterConstants {
 	public static final int IMAGE_PREVIEW_DISPLAY_OPTION_CODE_LARGE = 1;
 	public static final int IMAGE_PREVIEW_DISPLAY_OPTION_CODE_SMALL = 2;
 
+	public static final String COMPOSE_QUIT_ACTION_ASK = "ask";
+	public static final String COMPOSE_QUIT_ACTION_SAVE = "save";
+	public static final String COMPOSE_QUIT_ACTION_DISCARD = "discard";
+	
 	public static final String INTENT_PACKAGE_PREFIX = "org.mariotaku.twidere.";
 
 	public static final String INTENT_ACTION_HOME = INTENT_PACKAGE_PREFIX + "HOME";

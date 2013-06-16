@@ -50,7 +50,6 @@ public class PopupMenu implements OnDismissListener, OnItemClickListener, OnTouc
 		mWindow.setWidth(mContext.getResources().getDimensionPixelSize(R.dimen.popup_window_width));
 		mWindow.setAdapter(mAdapter);
 		mWindow.setOnItemClickListener(this);
-		mWindow.setPromptPosition(ListPopupWindow.POSITION_PROMPT_BELOW);
 		mWindow.setModal(true);
 	}
 
@@ -88,6 +87,7 @@ public class PopupMenu implements OnDismissListener, OnItemClickListener, OnTouc
 		dismiss();
 		final MenuItem item = mAdapter.getItem(position);
 		if (item.hasSubMenu()) {
+			if (item.getSubMenu().size() == 0) return;
 			showMenu(item.getSubMenu());
 		} else {
 			if (mItemClickListener != null) {
@@ -145,7 +145,11 @@ public class PopupMenu implements OnDismissListener, OnItemClickListener, OnTouc
 
 	private void showMenu(final Menu menu) {
 		mAdapter.setMenu(menu);
-		mWindow.show();
+		try {
+			mWindow.show();
+		} catch (final Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public static PopupMenu getInstance(final Context context, final View view) {
