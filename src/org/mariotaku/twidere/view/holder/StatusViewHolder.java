@@ -141,7 +141,7 @@ public class StatusViewHolder implements Constants {
 				break;
 			}
 			case NAME_DISPLAY_OPTION_CODE_SCREEN_NAME: {
-				this.name.setText("@" + screen_name);
+				this.name.setText(screen_name);
 				this.screen_name.setText(null);
 				this.screen_name.setVisibility(View.GONE);
 				break;
