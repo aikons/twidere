@@ -173,7 +173,7 @@ public class ComposeActivity extends BaseDialogWhenLargeActivity implements Text
 			}
 		}
 	};
-	
+
 	@Override
 	public void afterTextChanged(final Editable s) {
 
@@ -420,6 +420,11 @@ public class ComposeActivity extends BaseDialogWhenLargeActivity implements Text
 	@Override
 	public boolean onCreateOptionsMenu(final Menu menu) {
 		getMenuInflater().inflate(R.menu.menu_compose_actionbar, menu);
+		final MenuItem more_submenu = menu != null ? menu.findItem(R.id.more_submenu) : null;
+		if (more_submenu != null) {
+			final Intent extensions_intent = new Intent(INTENT_ACTION_EXTENSION_COMPOSE);
+			addIntentToMenu(this, more_submenu.getSubMenu(), extensions_intent);
+		}
 		return super.onCreateOptionsMenu(menu);
 	}
 
@@ -494,10 +499,6 @@ public class ComposeActivity extends BaseDialogWhenLargeActivity implements Text
 			if (sendItem != null) {
 				sendItem.setVisible(!bottom_send_button);
 				sendItem.setEnabled(!isEmpty(text_orig));
-			}
-			final MenuItem viewItem = menu.findItem(MENU_VIEW);
-			if (viewItem != null) {
-				viewItem.setVisible(mInReplyToStatus != null);
 			}
 			final MenuItem moreItem = menu.findItem(R.id.more_submenu);
 			if (moreItem != null) {
@@ -978,6 +979,10 @@ public class ComposeActivity extends BaseDialogWhenLargeActivity implements Text
 			mPreferences.edit().putBoolean(PREFERENCE_KEY_ATTACH_LOCATION, false).commit();
 			iconAttachLocation.clearColorFilter();
 			itemAttachLocation.setTitle(R.string.add_location);
+		}
+		final MenuItem viewItem = menu.findItem(MENU_VIEW);
+		if (viewItem != null) {
+			viewItem.setVisible(mInReplyToStatus != null);
 		}
 		setCommonMenu(menu);
 		mMenuBar.show();
