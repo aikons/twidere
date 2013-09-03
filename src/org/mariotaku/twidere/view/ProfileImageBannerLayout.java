@@ -22,11 +22,7 @@ package org.mariotaku.twidere.view;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
-import android.graphics.Shader;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.view.Gravity;
@@ -36,14 +32,15 @@ import android.widget.ImageView;
 public class ProfileImageBannerLayout extends ExtendedFrameLayout {
 
 	public static final int VIEW_ID_PROFILE_IMAGE = 0x10000001;
-	public static final int VIEW_ID_PROFILE_BANNER_IMAGE = 0x10000002;
+	public static final int VIEW_ID_PROFILE_BANNER = 0x10000002;
 
 	private static final double PROFILE_IMAGE_WIDTH_FACTOR = 0.1425;
 	private static final double PROFILE_IMAGE_TOP_MARGIN_FACTOR = 0.0875;
 
 	private final int mBorderWidth;
-
 	private final ImageView mProfileBannerImageView, mProfileImageView;
+
+	private int mAlpha;
 
 	public ProfileImageBannerLayout(final Context context) {
 		this(context, null);
@@ -55,9 +52,10 @@ public class ProfileImageBannerLayout extends ExtendedFrameLayout {
 
 	public ProfileImageBannerLayout(final Context context, final AttributeSet attrs, final int defStyle) {
 		super(context, attrs, defStyle);
-		mBorderWidth = (int) (getResources().getDisplayMetrics().density * 3.5);
+		mAlpha = 0xFF;
+		mBorderWidth = (int) (getResources().getDisplayMetrics().density * 2);
 		mProfileBannerImageView = new ProfileBannerImageView(context);
-		mProfileBannerImageView.setId(VIEW_ID_PROFILE_BANNER_IMAGE);
+		mProfileBannerImageView.setId(VIEW_ID_PROFILE_BANNER);
 		addView(mProfileBannerImageView, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
 		mProfileImageView = new ProfileImageView(context, mBorderWidth);
 		mProfileImageView.setId(VIEW_ID_PROFILE_IMAGE);
@@ -74,6 +72,23 @@ public class ProfileImageBannerLayout extends ExtendedFrameLayout {
 	}
 
 	@Override
+	public void setAlpha(final int alpha) {
+		mAlpha = alpha;
+		invalidate();
+	}
+
+	@Override
+	protected void dispatchDraw(final Canvas canvas) {
+		try {
+			canvas.saveLayerAlpha(null, mAlpha, Canvas.ALL_SAVE_FLAG);
+			super.dispatchDraw(canvas);
+			canvas.restore();
+		} catch (final NullPointerException e) {
+			super.dispatchDraw(canvas);
+		}
+	}
+
+	@Override
 	protected void onMeasure(final int widthMeasureSpec, final int heightMeasureSpec) {
 		final int width = MeasureSpec.getSize(widthMeasureSpec), height = width / 2;
 		setMeasuredDimension(width, height);
@@ -86,41 +101,6 @@ public class ProfileImageBannerLayout extends ExtendedFrameLayout {
 			profile_lp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
 			profile_lp.topMargin = (int) (height * PROFILE_IMAGE_TOP_MARGIN_FACTOR) - mBorderWidth;
 			mProfileImageView.setLayoutParams(profile_lp);
-		}
-	}
-
-	private static class ProfileBannerImageView extends ClickableImageView {
-
-		private static final int[] COLORS = new int[] { 0xFFFFFFFF, 0x00FFFFFF };
-		private static final float[] POSITIONS = new float[] { 0.0f, 1.0f };
-		private final Paint mPaint = new Paint();
-
-		private LinearGradient mShader;
-
-		private ProfileBannerImageView(final Context context) {
-			super(context, null, 0);
-			ViewCompat.setLayerType(this, LAYER_TYPE_SOFTWARE, null);
-			setScaleType(ScaleType.FIT_XY);
-		}
-
-		@Override
-		protected void onDraw(final Canvas canvas) {
-			final int width = getWidth(), height = getHeight();
-			if (mShader == null) return;
-			super.onDraw(canvas);
-			mPaint.setShader(mShader);
-			mPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
-			canvas.drawRect(0, 0, width, height, mPaint);
-		}
-
-		@Override
-		protected void onMeasure(final int widthMeasureSpec, final int heightMeasureSpec) {
-			final int width = MeasureSpec.getSize(widthMeasureSpec), height = width / 2;
-			setMeasuredDimension(width, height);
-			if (width > 0) {
-				mShader = new LinearGradient(width / 2, 0, width / 2, height, COLORS, POSITIONS, Shader.TileMode.CLAMP);
-			}
-			super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
 		}
 	}
 

@@ -20,6 +20,7 @@
 package org.mariotaku.twidere.adapter;
 
 import static android.text.format.DateUtils.getRelativeTimeSpanString;
+import static org.mariotaku.twidere.util.Utils.configBaseAdapter;
 import static org.mariotaku.twidere.util.Utils.findStatusInDatabases;
 import static org.mariotaku.twidere.util.Utils.formatSameDayTime;
 import static org.mariotaku.twidere.util.Utils.getAccountColor;
@@ -33,6 +34,7 @@ import static org.mariotaku.twidere.util.Utils.openImage;
 import static org.mariotaku.twidere.util.Utils.openUserProfile;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import org.mariotaku.twidere.R;
@@ -90,6 +92,7 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 		mImageLoader = application.getImageLoaderWrapper();
 		mDatabase = application.getSQLiteDatabase();
 		mLinkify = new TwidereLinkify(new OnLinkClickHandler(mContext));
+		configBaseAdapter(context, this);
 	}
 
 	@Override
@@ -140,7 +143,7 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 			final boolean is_reply = !TextUtils.isEmpty(in_reply_to_screen_name)
 					&& cursor.getLong(mIndices.in_reply_to_status_id) > 0;
 			final boolean is_mention = TextUtils.isEmpty(text) || TextUtils.isEmpty(account_screen_name) ? false : text
-					.toLowerCase().contains('@' + account_screen_name.toLowerCase());
+					.toLowerCase(Locale.US).contains('@' + account_screen_name.toLowerCase(Locale.US));
 			final boolean is_my_status = account_id == user_id;
 
 			if (mMultiSelectEnabled) {

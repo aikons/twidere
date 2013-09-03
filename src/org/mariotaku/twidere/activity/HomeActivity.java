@@ -22,8 +22,10 @@ package org.mariotaku.twidere.activity;
 import static org.mariotaku.twidere.util.Utils.cleanDatabasesByItemLimit;
 import static org.mariotaku.twidere.util.Utils.getAccountIds;
 import static org.mariotaku.twidere.util.Utils.getActivatedAccountIds;
+import static org.mariotaku.twidere.util.Utils.getDefaultAccountId;
 import static org.mariotaku.twidere.util.Utils.getTabs;
 import static org.mariotaku.twidere.util.Utils.openDirectMessagesConversation;
+import static org.mariotaku.twidere.util.Utils.openSearch;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,23 +35,24 @@ import org.mariotaku.actionbarcompat.ActionBar;
 import org.mariotaku.twidere.R;
 import org.mariotaku.twidere.adapter.TabsAdapter;
 import org.mariotaku.twidere.fragment.APIUpgradeConfirmDialog;
-import org.mariotaku.twidere.fragment.AccountsFragment;
 import org.mariotaku.twidere.fragment.DirectMessagesFragment;
 import org.mariotaku.twidere.fragment.HomeTimelineFragment;
 import org.mariotaku.twidere.fragment.MentionsFragment;
+import org.mariotaku.twidere.fragment.TrendsFragment;
 import org.mariotaku.twidere.model.TabSpec;
-import org.mariotaku.twidere.provider.TweetStore.Accounts;
+import org.mariotaku.twidere.preference.ThemeColorPreference;
 import org.mariotaku.twidere.util.ActivityAccessor;
 import org.mariotaku.twidere.util.ArrayUtils;
 import org.mariotaku.twidere.util.AsyncTwitterWrapper;
+import org.mariotaku.twidere.util.MathUtils;
+import org.mariotaku.twidere.util.MultiSelectEventHandler;
 import org.mariotaku.twidere.view.ExtendedViewPager;
 import org.mariotaku.twidere.view.TabPageIndicator;
 
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.SearchManager;
 import android.content.BroadcastReceiver;
-import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -61,6 +64,8 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentManagerTrojan;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.support.v4.widget.DrawerLayout;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -71,11 +76,12 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import edu.ucdavis.earlybird.ProfilingUtil;
 
-public class HomeActivity extends MultiSelectActivity implements OnClickListener, OnPageChangeListener {
+public class HomeActivity extends DualPaneActivity implements OnClickListener, OnPageChangeListener {
 
 	private SharedPreferences mPreferences;
 	private AsyncTwitterWrapper mTwitterWrapper;
 	private NotificationManager mNotificationManager;
+	private MultiSelectEventHandler mMultiSelectHandler;
 
 	private ActionBar mActionBar;
 	private TabsAdapter mAdapter;
@@ -84,16 +90,19 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 	private ImageButton mComposeButton;
 	private TabPageIndicator mIndicator;
 	private ProgressBar mProgress;
+	private DrawerLayout mDrawerLayout;
+	private View mLeftDrawerContainer;
 
 	private boolean mProgressBarIndeterminateVisible = false;
 
 	private boolean mDisplayAppIcon;
-	private boolean mShowHomeTab, mShowMentionsTab, mShowMessagesTab, mShowAccountsTab;
+	private boolean mShowHomeTab, mShowMentionsTab, mShowMessagesTab, mShowTrendsTab;
 
 	public static final int TAB_POSITION_HOME = 0;
-
 	public static final int TAB_POSITION_MENTIONS = 1;
 	public static final int TAB_POSITION_MESSAGES = 2;
+	public static final int TAB_POSITION_TRENDS = 3;
+
 	private final ArrayList<TabSpec> mCustomTabs = new ArrayList<TabSpec>();
 
 	private final BroadcastReceiver mStateReceiver = new BroadcastReceiver() {
@@ -103,10 +112,28 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 			final String action = intent.getAction();
 			if (BROADCAST_TASK_STATE_CHANGED.equals(action)) {
 				setSupportProgressBarIndeterminateVisibility(mProgressBarIndeterminateVisible);
+			} else if (BROADCAST_ACCOUNT_LIST_DATABASE_UPDATED.equals(action)) {
+				notifyAccountsChanged();
 			}
 		}
 
 	};
+
+	public void closeAccountsDrawer() {
+		if (mDrawerLayout == null) return;
+		mDrawerLayout.closeDrawer(Gravity.LEFT);
+	}
+
+	public void notifyAccountsChanged() {
+		if (mPreferences == null) return;
+		final long[] account_ids = getAccountIds(this);
+		final long default_id = mPreferences.getLong(PREFERENCE_KEY_DEFAULT_ACCOUNT_ID, -1);
+		if (account_ids == null || account_ids.length == 0) {
+			finish();
+		} else if (account_ids.length > 0 && !ArrayUtils.contains(account_ids, default_id)) {
+			mPreferences.edit().putLong(PREFERENCE_KEY_DEFAULT_ACCOUNT_ID, account_ids[0]).commit();
+		}
+	}
 
 	@Override
 	public void onBackStackChanged() {
@@ -138,6 +165,9 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 						case TAB_POSITION_MESSAGES:
 							openDirectMessagesConversation(this, -1, -1, null);
 							break;
+						case TAB_POSITION_TRENDS:
+							onSearchRequested();
+							break;
 						default:
 							startActivity(new Intent(INTENT_ACTION_COMPOSE));
 					}
@@ -151,6 +181,8 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 		super.onContentChanged();
 		mViewPager = (ExtendedViewPager) findViewById(R.id.main);
 		mComposeButton = (ImageButton) findViewById(R.id.button_compose);
+		mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+		mLeftDrawerContainer = findViewById(R.id.left_drawer_container);
 	}
 
 	@Override
@@ -164,8 +196,15 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 		switch (item.getItemId()) {
 			case MENU_HOME: {
 				final FragmentManager fm = getSupportFragmentManager();
+				final int count = fm.getBackStackEntryCount();
+				if (mDrawerLayout.isDrawerOpen(Gravity.LEFT)) {
+					mDrawerLayout.closeDrawer(Gravity.LEFT);
+					return true;
+				} else if (count == 0 && !mDrawerLayout.isDrawerOpen(Gravity.LEFT)) {
+					mDrawerLayout.openDrawer(Gravity.LEFT);
+					return true;
+				}
 				if (isDualPaneMode() && !FragmentManagerTrojan.isStateSaved(fm)) {
-					final int count = fm.getBackStackEntryCount();
 					for (int i = 0; i < count; i++) {
 						fm.popBackStackImmediate();
 					}
@@ -184,7 +223,11 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 				return true;
 			}
 			case MENU_SELECT_ACCOUNT: {
-				startActivityForResult(new Intent(INTENT_ACTION_SELECT_ACCOUNT), REQUEST_SELECT_ACCOUNT);
+				if (mDrawerLayout.isDrawerOpen(Gravity.LEFT)) {
+					mDrawerLayout.closeDrawer(Gravity.LEFT);
+				} else {
+					mDrawerLayout.openDrawer(Gravity.LEFT);
+				}
 				return true;
 			}
 			case MENU_SETTINGS: {
@@ -199,7 +242,6 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 
 	@Override
 	public void onPageScrolled(final int position, final float positionOffset, final int positionOffsetPixels) {
-
 	}
 
 	@Override
@@ -224,6 +266,9 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 				break;
 			}
 		}
+		if (mDrawerLayout.isDrawerOpen(Gravity.LEFT)) {
+			mDrawerLayout.closeDrawer(Gravity.LEFT);
+		}
 		invalidateSupportOptionsMenu();
 	}
 
@@ -239,13 +284,18 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 				title = R.string.compose;
 				icon = R.drawable.ic_menu_tweet;
 			} else {
-				title = R.string.compose;
 				switch (tab.position) {
 					case TAB_POSITION_MESSAGES:
 						icon = R.drawable.ic_menu_compose;
+						title = R.string.compose;
+						break;
+					case TAB_POSITION_TRENDS:
+						icon = R.drawable.ic_menu_search;
+						title = android.R.string.search_go;
 						break;
 					default:
 						icon = R.drawable.ic_menu_tweet;
+						title = R.string.compose;
 				}
 			}
 
@@ -253,7 +303,8 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 			if (composeItem != null) {
 				composeItem.setIcon(icon);
 				composeItem.setTitle(title);
-				composeItem.setVisible(!bottom_actions && mViewPager.getVisibility() == View.VISIBLE);
+				composeItem.setEnabled(mViewPager.getVisibility() == View.VISIBLE);
+				composeItem.setVisible(!bottom_actions);
 			}
 			if (mComposeButton != null) {
 				mComposeButton.setImageResource(icon);
@@ -267,16 +318,6 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 			}
 		}
 		return super.onPrepareOptionsMenu(menu);
-	}
-
-	public void setDefaultAccount() {
-		if (mPreferences == null) return;
-		final long[] activated_ids = getActivatedAccountIds(this);
-		final long default_account_id = mPreferences.getLong(PREFERENCE_KEY_DEFAULT_ACCOUNT_ID, -1);
-		if (activated_ids != null && activated_ids.length > 0
-				&& !ArrayUtils.contains(activated_ids, default_account_id)) {
-			mPreferences.edit().putLong(PREFERENCE_KEY_DEFAULT_ACCOUNT_ID, activated_ids[0]).commit();
-		}
 	}
 
 	@Override
@@ -295,90 +336,30 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 		return R.layout.home;
 	}
 
-	@Override
-	protected void onActivityResult(final int requestCode, final int resultCode, final Intent intent) {
-		final ContentResolver resolver = getContentResolver();
-		ContentValues values;
-		switch (requestCode) {
-			case REQUEST_SELECT_ACCOUNT: {
-				if (resultCode == RESULT_OK) {
-					if (intent == null || intent.getExtras() == null) {
-						break;
-					}
-					final Bundle bundle = intent.getExtras();
-					if (bundle == null) {
-						break;
-					}
-					final long[] account_ids = bundle.getLongArray(INTENT_KEY_IDS);
-					if (account_ids != null) {
-						values = new ContentValues();
-						values.put(Accounts.IS_ACTIVATED, 0);
-						resolver.update(Accounts.CONTENT_URI, values, null, null);
-						values = new ContentValues();
-						values.put(Accounts.IS_ACTIVATED, 1);
-						for (final long account_id : account_ids) {
-							final String where = Accounts.ACCOUNT_ID + " = " + account_id;
-							resolver.update(Accounts.CONTENT_URI, values, where, null);
-						}
-					}
-					setDefaultAccount();
-				} else if (resultCode == RESULT_CANCELED) {
-					if (getActivatedAccountIds(this).length <= 0) {
-						finish();
-					} else {
-						setDefaultAccount();
-					}
-				}
-				break;
-			}
-		}
-		super.onActivityResult(requestCode, resultCode, intent);
-	}
-
 	/** Called when the activity is first created. */
 	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
 		mTwitterWrapper = getTwitterWrapper();
 		mPreferences = getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
 		mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+		mMultiSelectHandler = new MultiSelectEventHandler(this);
+		mMultiSelectHandler.dispatchOnCreate();
 		super.onCreate(savedInstanceState);
 		sendBroadcast(new Intent(BROADCAST_HOME_ACTIVITY_ONCREATE));
 		final Resources res = getResources();
 		mDisplayAppIcon = res.getBoolean(R.bool.home_display_icon);
 		final long[] account_ids = getAccountIds(this);
-		if (account_ids.length <= 0) {
+		if (account_ids.length == 0) {
 			final Intent intent = new Intent(INTENT_ACTION_TWITTER_LOGIN);
 			intent.setClass(this, SignInActivity.class);
 			startActivity(intent);
 			finish();
 			return;
 		} else {
-			setDefaultAccount();
+			notifyAccountsChanged();
 		}
 		final boolean refresh_on_start = mPreferences.getBoolean(PREFERENCE_KEY_REFRESH_ON_START, false);
-		final Bundle bundle = getIntent().getExtras();
-		int initial_tab = -1;
-		if (bundle != null) {
-			final long[] refreshed_ids = bundle.getLongArray(INTENT_KEY_IDS);
-			if (refreshed_ids != null && !refresh_on_start && savedInstanceState == null) {
-				mTwitterWrapper.refreshAll();
-			}
-			initial_tab = bundle.getInt(INTENT_KEY_INITIAL_TAB, -1);
-			switch (initial_tab) {
-				case TAB_POSITION_HOME: {
-					mTwitterWrapper.clearNotification(NOTIFICATION_ID_HOME_TIMELINE);
-					break;
-				}
-				case TAB_POSITION_MENTIONS: {
-					mTwitterWrapper.clearNotification(NOTIFICATION_ID_MENTIONS);
-					break;
-				}
-				case TAB_POSITION_MESSAGES: {
-					mTwitterWrapper.clearNotification(NOTIFICATION_ID_DIRECT_MESSAGES);
-					break;
-				}
-			}
-		}
+		final int initial_tab = handleIntent(getIntent(), savedInstanceState == null);
 		mActionBar = getSupportActionBar();
 		mActionBar.setCustomView(R.layout.base_tabs);
 		mActionBar.setDisplayShowTitleEnabled(false);
@@ -391,54 +372,38 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 
 		mProgress = (ProgressBar) view.findViewById(android.R.id.progress);
 		mIndicator = (TabPageIndicator) view.findViewById(android.R.id.tabs);
+		ThemeColorPreference.applyBackground(mIndicator);
 		final boolean tab_display_label = res.getBoolean(R.bool.tab_display_label);
 		mAdapter = new TabsAdapter(this, getSupportFragmentManager(), mIndicator);
 		mShowHomeTab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_HOME_TAB, true);
 		mShowMentionsTab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_MENTIONS_TAB, true);
 		mShowMessagesTab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_MESSAGES_TAB, true);
-		mShowAccountsTab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_ACCOUNTS_TAB, true);
+		mShowTrendsTab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_TRENDS_TAB, true);
 		initTabs(getTabs(this));
 		mViewPager.setAdapter(mAdapter);
 		mViewPager.setOffscreenPageLimit(3);
 		mIndicator.setViewPager(mViewPager);
 		mIndicator.setOnPageChangeListener(this);
 		mIndicator.setDisplayLabel(tab_display_label);
+		mDrawerLayout.setDrawerShadow(R.drawable.drawer_shadow, Gravity.LEFT);
+		mLeftDrawerContainer.setBackgroundResource(getPaneBackground());
 		getSupportFragmentManager().addOnBackStackChangedListener(this);
 
 		final boolean remember_position = mPreferences.getBoolean(PREFERENCE_KEY_REMEMBER_POSITION, true);
 		final long[] activated_ids = getActivatedAccountIds(this);
 		if (activated_ids.length <= 0) {
 			startActivityForResult(new Intent(INTENT_ACTION_SELECT_ACCOUNT), REQUEST_SELECT_ACCOUNT);
-		} else if (remember_position || initial_tab >= 0) {
-			final int position = initial_tab >= 0 ? initial_tab : mPreferences.getInt(
-					PREFERENCE_KEY_SAVED_TAB_POSITION, TAB_POSITION_HOME);
-			if (position >= 0 || position < mViewPager.getChildCount()) {
-				mViewPager.setCurrentItem(position);
-			}
+		} else if (initial_tab >= 0) {
+			mViewPager.setCurrentItem(MathUtils.clamp(initial_tab, mViewPager.getChildCount(), 0));
+		} else if (remember_position) {
+			final int position = mPreferences.getInt(PREFERENCE_KEY_SAVED_TAB_POSITION, TAB_POSITION_HOME);
+			mViewPager.setCurrentItem(MathUtils.clamp(position, mViewPager.getChildCount(), 0));
 		}
 		if (refresh_on_start && savedInstanceState == null) {
 			mTwitterWrapper.refreshAll();
 		}
-		if (!mPreferences.getBoolean(PREFERENCE_KEY_API_UPGRADE_CONFIRMED, false)) {
-			final FragmentManager fm = getSupportFragmentManager();
-			if (fm.findFragmentByTag(FRAGMENT_TAG_API_UPGRADE_NOTICE) == null
-					|| !fm.findFragmentByTag(FRAGMENT_TAG_API_UPGRADE_NOTICE).isAdded()) {
-				new APIUpgradeConfirmDialog().show(getSupportFragmentManager(), "api_upgrade_notice");
-			}
-		}
-
-		if (mPreferences.getBoolean(PREFERENCE_KEY_SHOW_UCD_DATA_PROFILING_REQUEST, true)) {
-			final Intent intent = new Intent(this, DataProfilingSettingsActivity.class);
-			final PendingIntent content_intent = PendingIntent.getActivity(this, 0, intent, 0);
-			final NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
-			builder.setAutoCancel(true);
-			builder.setSmallIcon(R.drawable.ic_stat_question_mark);
-			builder.setTicker(getString(R.string.data_profiling_notification_ticker));
-			builder.setContentTitle(getString(R.string.data_profiling_notification_title));
-			builder.setContentText(getString(R.string.data_profiling_notification_desc));
-			builder.setContentIntent(content_intent);
-			mNotificationManager.notify(NOTIFICATION_ID_DATA_PROFILING, builder.build());
-		}
+		showAPIUpgradeNotice();
+		showDataProfilingRequest();
 	}
 
 	@Override
@@ -451,14 +416,81 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 
 	@Override
 	protected void onNewIntent(final Intent intent) {
-		final Bundle bundle = intent.getExtras();
-		if (bundle != null) {
-			final long[] refreshed_ids = bundle.getLongArray(INTENT_KEY_IDS);
-			if (refreshed_ids != null) {
-				// TODO should I refresh inbox too?
-				mTwitterWrapper.refreshAll();
-			}
-			final int initial_tab = bundle.getInt(INTENT_KEY_INITIAL_TAB, -1);
+		handleIntent(intent, false);
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		invalidateSupportOptionsMenu();
+		mViewPager.setPagingEnabled(!mPreferences.getBoolean(PREFERENCE_KEY_DISABLE_TAB_SWIPE, false));
+	}
+
+	@Override
+	protected void onStart() {
+		super.onStart();
+		mMultiSelectHandler.dispatchOnStart();
+		sendBroadcast(new Intent(BROADCAST_HOME_ACTIVITY_ONSTART));
+		setSupportProgressBarIndeterminateVisibility(mProgressBarIndeterminateVisible);
+		final IntentFilter filter = new IntentFilter(BROADCAST_TASK_STATE_CHANGED);
+		registerReceiver(mStateReceiver, filter);
+		final boolean show_home_tab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_HOME_TAB, true);
+		final boolean show_mentions_tab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_MENTIONS_TAB, true);
+		final boolean show_messages_tab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_MESSAGES_TAB, true);
+		final boolean show_trends_tab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_TRENDS_TAB, true);
+
+		final List<TabSpec> tabs = getTabs(this);
+		if (isTabsChanged(tabs) || show_home_tab != mShowHomeTab || show_mentions_tab != mShowMentionsTab
+				|| show_messages_tab != mShowMessagesTab || show_trends_tab != mShowTrendsTab) {
+			restart();
+		}
+		// UCD
+		ProfilingUtil.profile(this, ProfilingUtil.FILE_NAME_APP, "App onStart");
+	}
+
+	@Override
+	protected void onStop() {
+		mMultiSelectHandler.dispatchOnStop();
+		unregisterReceiver(mStateReceiver);
+		mPreferences.edit().putInt(PREFERENCE_KEY_SAVED_TAB_POSITION, mViewPager.getCurrentItem()).commit();
+		sendBroadcast(new Intent(BROADCAST_HOME_ACTIVITY_ONSTOP));
+
+		// UCD
+		ProfilingUtil.profile(this, ProfilingUtil.FILE_NAME_APP, "App onStop");
+		super.onStop();
+	}
+
+	protected void setPagingEnabled(final boolean enabled) {
+		if (mIndicator != null && mViewPager != null) {
+			mViewPager.setPagingEnabled(!mPreferences.getBoolean(PREFERENCE_KEY_DISABLE_TAB_SWIPE, false));
+			mIndicator.setSwitchingEnabled(enabled);
+			mIndicator.setEnabled(enabled);
+		}
+	}
+
+	private int handleIntent(final Intent intent, final boolean first_create) {
+		Log.d(LOGTAG, String.format("Intent: %s", intent));
+		// Reset intent
+		setIntent(new Intent(this, HomeActivity.class));
+		final String action = intent.getAction();
+		if (Intent.ACTION_SEARCH.equals(action)) {
+			final String query = intent.getStringExtra(SearchManager.QUERY);
+			final long account_id = getDefaultAccountId(this);
+			openSearch(this, account_id, query);
+			return -1;
+		}
+		final Bundle extras = intent.getExtras();
+		final boolean refresh_on_start = mPreferences.getBoolean(PREFERENCE_KEY_REFRESH_ON_START, false);
+		final long[] refreshed_ids = extras != null ? extras.getLongArray(INTENT_KEY_IDS) : null;
+		if (refreshed_ids != null) {
+			mTwitterWrapper.refreshAll(refreshed_ids);
+		} else if (first_create && refresh_on_start) {
+			mTwitterWrapper.refreshAll();
+		}
+
+		int initial_tab = -1;
+		if (extras != null) {
+			initial_tab = extras.getInt(INTENT_KEY_INITIAL_TAB, -1);
 			if (initial_tab != -1 && mViewPager != null) {
 				switch (initial_tab) {
 					case TAB_POSITION_HOME: {
@@ -476,59 +508,13 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 						break;
 					}
 				}
-				if (initial_tab >= 0 || initial_tab < mViewPager.getChildCount()) {
-					mViewPager.setCurrentItem(initial_tab);
-				}
+			}
+			final Intent extra_intent = extras.getParcelable(INTENT_KEY_EXTRA_INTENT);
+			if (extra_intent != null) {
+				startActivity(extra_intent);
 			}
 		}
-		super.onNewIntent(intent);
-	}
-
-	@Override
-	protected void onResume() {
-		super.onResume();
-		invalidateSupportOptionsMenu();
-		mViewPager.setPagingEnabled(!mPreferences.getBoolean(PREFERENCE_KEY_DISABLE_TAB_SWIPE, false));
-	}
-
-	@Override
-	protected void onStart() {
-		super.onStart();
-		sendBroadcast(new Intent(BROADCAST_HOME_ACTIVITY_ONSTART));
-		setSupportProgressBarIndeterminateVisibility(mProgressBarIndeterminateVisible);
-		final IntentFilter filter = new IntentFilter(BROADCAST_TASK_STATE_CHANGED);
-		registerReceiver(mStateReceiver, filter);
-		final boolean show_home_tab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_HOME_TAB, true);
-		final boolean show_mentions_tab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_MENTIONS_TAB, true);
-		final boolean show_messages_tab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_MESSAGES_TAB, true);
-		final boolean show_accounts_tab = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_ACCOUNTS_TAB, true);
-
-		final List<TabSpec> tabs = getTabs(this);
-		if (isTabsChanged(tabs) || show_home_tab != mShowHomeTab || show_mentions_tab != mShowMentionsTab
-				|| show_messages_tab != mShowMessagesTab || show_accounts_tab != mShowAccountsTab) {
-			restart();
-		}
-		// UCD
-		ProfilingUtil.profile(this, ProfilingUtil.FILE_NAME_APP, "App onStart");
-	}
-
-	@Override
-	protected void onStop() {
-		unregisterReceiver(mStateReceiver);
-		mPreferences.edit().putInt(PREFERENCE_KEY_SAVED_TAB_POSITION, mViewPager.getCurrentItem()).commit();
-		sendBroadcast(new Intent(BROADCAST_HOME_ACTIVITY_ONSTOP));
-
-		// UCD
-		ProfilingUtil.profile(this, ProfilingUtil.FILE_NAME_APP, "App onStop");
-		super.onStop();
-	}
-
-	protected void setPagingEnabled(final boolean enabled) {
-		if (mIndicator != null && mViewPager != null) {
-			mViewPager.setPagingEnabled(!mPreferences.getBoolean(PREFERENCE_KEY_DISABLE_TAB_SWIPE, false));
-			mIndicator.setSwitchingEnabled(enabled);
-			mIndicator.setEnabled(enabled);
-		}
+		return initial_tab;
 	}
 
 	private void initTabs(final Collection<? extends TabSpec> tabs) {
@@ -547,12 +533,11 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 			mAdapter.addTab(DirectMessagesFragment.class, null, getString(R.string.direct_messages),
 					R.drawable.ic_tab_message, TAB_POSITION_MESSAGES);
 		}
-		mAdapter.addTabs(tabs);
-		if (mShowAccountsTab) {
-			mAdapter.addTab(AccountsFragment.class, null, getString(R.string.accounts), R.drawable.ic_tab_accounts,
-					Integer.MAX_VALUE);
+		if (mShowTrendsTab) {
+			mAdapter.addTab(TrendsFragment.class, null, getString(R.string.trends), R.drawable.ic_tab_trends,
+					TAB_POSITION_TRENDS);
 		}
-
+		mAdapter.addTabs(tabs);
 	}
 
 	private boolean isTabsChanged(final List<TabSpec> tabs) {
@@ -563,6 +548,31 @@ public class HomeActivity extends MultiSelectActivity implements OnClickListener
 			if (!mCustomTabs.get(i).equals(tabs.get(i))) return true;
 		}
 		return false;
+	}
+
+	private void showAPIUpgradeNotice() {
+		if (!mPreferences.getBoolean(PREFERENCE_KEY_API_UPGRADE_CONFIRMED, false)) {
+			final FragmentManager fm = getSupportFragmentManager();
+			if (fm.findFragmentByTag(FRAGMENT_TAG_API_UPGRADE_NOTICE) == null
+					|| !fm.findFragmentByTag(FRAGMENT_TAG_API_UPGRADE_NOTICE).isAdded()) {
+				new APIUpgradeConfirmDialog().show(getSupportFragmentManager(), "api_upgrade_notice");
+			}
+		}
+	}
+
+	private void showDataProfilingRequest() {
+		if (mPreferences.getBoolean(PREFERENCE_KEY_SHOW_UCD_DATA_PROFILING_REQUEST, true)) {
+			final Intent intent = new Intent(this, DataProfilingSettingsActivity.class);
+			final PendingIntent content_intent = PendingIntent.getActivity(this, 0, intent, 0);
+			final NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
+			builder.setAutoCancel(true);
+			builder.setSmallIcon(R.drawable.ic_stat_question_mark);
+			builder.setTicker(getString(R.string.data_profiling_notification_ticker));
+			builder.setContentTitle(getString(R.string.data_profiling_notification_title));
+			builder.setContentText(getString(R.string.data_profiling_notification_desc));
+			builder.setContentIntent(content_intent);
+			mNotificationManager.notify(NOTIFICATION_ID_DATA_PROFILING, builder.build());
+		}
 	}
 
 }

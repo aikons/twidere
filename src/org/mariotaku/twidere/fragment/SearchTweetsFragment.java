@@ -27,7 +27,10 @@ import org.mariotaku.twidere.model.ParcelableStatus;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.support.v4.content.Loader;
+import android.widget.AbsListView;
+import android.widget.AbsListView.OnScrollListener;
 
 public class SearchTweetsFragment extends ParcelableStatusesListFragment {
 
@@ -54,6 +57,17 @@ public class SearchTweetsFragment extends ParcelableStatusesListFragment {
 		final IStatusesAdapter<List<ParcelableStatus>> adapter = getListAdapter();
 		adapter.setFiltersEnabled(true);
 		adapter.setIgnoredFilterFields(false, false, false, false);
+	}
+
+	@Override
+	public void onScrollStateChanged(final AbsListView view, final int scrollState) {
+		super.onScrollStateChanged(view, scrollState);
+		if (scrollState == OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
+			final Fragment parent = getParentFragment();
+			if (parent instanceof SearchFragment) {
+				((SearchFragment) parent).hideIndicator();
+			}
+		}
 	}
 
 	@Override

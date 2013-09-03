@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import org.mariotaku.twidere.R;
@@ -49,8 +50,7 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListView;
 import android.widget.TextView;
 
-public class FilePickerActivity extends BaseDialogWhenLargeActivity implements OnItemClickListener,
-		LoaderCallbacks<List<File>> {
+public class FilePickerActivity extends BaseActivity implements OnItemClickListener, LoaderCallbacks<List<File>> {
 
 	private File mCurrentDirectory;
 	private ListView mListView;
@@ -206,7 +206,8 @@ public class FilePickerActivity extends BaseDialogWhenLargeActivity implements O
 		private static final Comparator<File> NAME_COMPARATOR = new Comparator<File>() {
 			@Override
 			public int compare(final File file1, final File file2) {
-				return file1.getName().toLowerCase().compareTo(file2.getName().toLowerCase());
+				final Locale loc = Locale.getDefault();
+				return file1.getName().toLowerCase(loc).compareTo(file2.getName().toLowerCase(loc));
 			}
 		};
 

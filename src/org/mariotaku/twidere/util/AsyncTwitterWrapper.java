@@ -26,6 +26,7 @@ import static org.mariotaku.twidere.util.Utils.appendQueryParameters;
 import static org.mariotaku.twidere.util.Utils.getAccountScreenName;
 import static org.mariotaku.twidere.util.Utils.getActivatedAccountIds;
 import static org.mariotaku.twidere.util.Utils.getAllStatusesIds;
+import static org.mariotaku.twidere.util.Utils.getDefaultAccountId;
 import static org.mariotaku.twidere.util.Utils.getImagePathFromUri;
 import static org.mariotaku.twidere.util.Utils.getImageUploadStatus;
 import static org.mariotaku.twidere.util.Utils.getNewestMessageIdsFromDatabase;
@@ -50,6 +51,7 @@ import org.mariotaku.twidere.model.ParcelableStatus;
 import org.mariotaku.twidere.model.ParcelableUser;
 import org.mariotaku.twidere.model.ParcelableUserList;
 import org.mariotaku.twidere.model.SingleResponse;
+import org.mariotaku.twidere.preference.HomeRefreshContentPreference;
 import org.mariotaku.twidere.provider.TweetStore;
 import org.mariotaku.twidere.provider.TweetStore.CachedHashtags;
 import org.mariotaku.twidere.provider.TweetStore.CachedTrends;
@@ -57,6 +59,7 @@ import org.mariotaku.twidere.provider.TweetStore.CachedUsers;
 import org.mariotaku.twidere.provider.TweetStore.DirectMessages;
 import org.mariotaku.twidere.provider.TweetStore.Drafts;
 import org.mariotaku.twidere.provider.TweetStore.Mentions;
+import org.mariotaku.twidere.provider.TweetStore.Notifications;
 import org.mariotaku.twidere.provider.TweetStore.Statuses;
 
 import twitter4j.DirectMessage;
@@ -128,7 +131,7 @@ public class AsyncTwitterWrapper extends TwitterWrapper {
 	}
 
 	public void clearNotification(final int id) {
-		final Uri uri = TweetStore.CONTENT_URI_NOTOFICATIONS.buildUpon().appendPath(String.valueOf(id)).build();
+		final Uri uri = Notifications.CONTENT_URI.buildUpon().appendPath(String.valueOf(id)).build();
 		mResolver.delete(uri, null, null);
 	}
 
@@ -269,16 +272,29 @@ public class AsyncTwitterWrapper extends TwitterWrapper {
 
 	public int refreshAll() {
 		final long[] account_ids = getActivatedAccountIds(mContext);
-		if (mPreferences.getBoolean(PREFERENCE_KEY_HOME_REFRESH_MENTIONS, false)) {
-			final long[] since_ids = getNewestStatusIdsFromDatabase(mContext, Mentions.CONTENT_URI);
+		return refreshAll(account_ids);
+	}
+
+	public int refreshAll(final long[] account_ids) {
+		if (mPreferences.getBoolean(PREFERENCE_KEY_HOME_REFRESH_MENTIONS,
+				HomeRefreshContentPreference.DEFAULT_ENABLE_MENTIONS)) {
+			final long[] since_ids = getNewestStatusIdsFromDatabase(mContext, Mentions.CONTENT_URI, account_ids);
 			getMentions(account_ids, null, since_ids);
 		}
-		if (mPreferences.getBoolean(PREFERENCE_KEY_HOME_REFRESH_DIRECT_MESSAGES, false)) {
-			final long[] since_ids = getNewestMessageIdsFromDatabase(mContext, DirectMessages.Inbox.CONTENT_URI);
+		if (mPreferences.getBoolean(PREFERENCE_KEY_HOME_REFRESH_DIRECT_MESSAGES,
+				HomeRefreshContentPreference.DEFAULT_ENABLE_DIRECT_MESSAGES)) {
+			final long[] since_ids = getNewestMessageIdsFromDatabase(mContext, DirectMessages.Inbox.CONTENT_URI,
+					account_ids);
 			getReceivedDirectMessages(account_ids, null, since_ids);
 			getSentDirectMessages(account_ids, null, null);
 		}
-		final long[] since_ids = getNewestStatusIdsFromDatabase(mContext, Statuses.CONTENT_URI);
+		if (mPreferences.getBoolean(PREFERENCE_KEY_HOME_REFRESH_TRENDS,
+				HomeRefreshContentPreference.DEFAULT_ENABLE_TRENDS)) {
+			final long account_id = getDefaultAccountId(mContext);
+			final int woeid = mPreferences.getInt(PREFERENCE_KEY_LOCAL_TRENDS_WOEID, 1);
+			getLocalTrends(account_id, woeid);
+		}
+		final long[] since_ids = getNewestStatusIdsFromDatabase(mContext, Statuses.CONTENT_URI, account_ids);
 		return getHomeTimeline(account_ids, null, since_ids);
 	}
 
@@ -530,7 +546,7 @@ public class AsyncTwitterWrapper extends TwitterWrapper {
 		protected void onPostExecute(final SingleResponse<ParcelableUserList> result) {
 			final boolean succeed = result != null && result.data != null && result.data.id > 0;
 			if (succeed) {
-				final String message = mContext.getString(R.string.added_user_to_list, result.data.name);
+				final String message = mContext.getString(R.string.added_users_to_list, result.data.name);
 				mMessagesManager.showOkMessage(message, false);
 			} else {
 				mMessagesManager.showErrorMessage(R.string.adding_member, result.exception, true);
@@ -891,7 +907,7 @@ public class AsyncTwitterWrapper extends TwitterWrapper {
 		protected void onPostExecute(final SingleResponse<ParcelableUserList> result) {
 			final boolean succeed = result != null && result.data != null && result.data.id > 0;
 			if (succeed) {
-				final String message = mContext.getString(R.string.deleted_user_from_list, result.data.name);
+				final String message = mContext.getString(R.string.deleted_users_from_list, result.data.name);
 				mMessagesManager.showInfoMessage(message, false);
 			} else {
 				mMessagesManager.showErrorMessage(R.string.deleting, result.exception, true);
@@ -2288,8 +2304,8 @@ public class AsyncTwitterWrapper extends TwitterWrapper {
 			values.put(Drafts.IN_REPLY_TO_STATUS_ID, in_reply_to);
 			values.put(Drafts.TEXT, content);
 			if (image_uri != null) {
-				values.put(Drafts.IS_IMAGE_ATTACHED, !delete_image);
-				values.put(Drafts.IS_PHOTO_ATTACHED, delete_image);
+				final int image_type = delete_image ? ATTACHED_IMAGE_TYPE_PHOTO : ATTACHED_IMAGE_TYPE_IMAGE;
+				values.put(Drafts.ATTACHED_IMAGE_TYPE, image_type);
 				values.put(Drafts.IMAGE_URI, ParseUtils.parseString(image_uri));
 			}
 			mResolver.insert(Drafts.CONTENT_URI, values);

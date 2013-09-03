@@ -21,6 +21,7 @@ package org.mariotaku.twidere.fragment;
 
 import static android.text.TextUtils.isEmpty;
 import static org.mariotaku.twidere.util.Utils.buildDirectMessageConversationUri;
+import static org.mariotaku.twidere.util.Utils.getDefaultTextSize;
 import static org.mariotaku.twidere.util.Utils.getLocalizedNumber;
 import static org.mariotaku.twidere.util.Utils.openUserProfile;
 import static org.mariotaku.twidere.util.Utils.showOkMessage;
@@ -54,7 +55,6 @@ import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.text.Editable;
-import android.text.Html;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -335,7 +335,7 @@ public class DirectMessagesConversationFragment extends BaseListFragment impleme
 					break;
 				}
 				case MENU_COPY: {
-					if (ClipboardUtils.setText(getActivity(), Html.fromHtml(mSelectedDirectMessage.text_html))) {
+					if (ClipboardUtils.setText(getActivity(), mSelectedDirectMessage.text_plain)) {
 						showOkMessage(getActivity(), R.string.text_copied, false);
 					}
 					break;
@@ -377,7 +377,7 @@ public class DirectMessagesConversationFragment extends BaseListFragment impleme
 		filter.addAction(BROADCAST_SENT_DIRECT_MESSAGES_REFRESHED);
 		registerReceiver(mStatusReceiver, filter);
 
-		final float text_size = mPreferences.getInt(PREFERENCE_KEY_TEXT_SIZE, PREFERENCE_DEFAULT_TEXT_SIZE);
+		final float text_size = mPreferences.getInt(PREFERENCE_KEY_TEXT_SIZE, getDefaultTextSize(getActivity()));
 		final boolean display_profile_image = mPreferences.getBoolean(PREFERENCE_KEY_DISPLAY_PROFILE_IMAGE, true);
 		final String name_display_option = mPreferences.getString(PREFERENCE_KEY_NAME_DISPLAY_OPTION,
 				NAME_DISPLAY_OPTION_BOTH);
@@ -423,24 +423,39 @@ public class DirectMessagesConversationFragment extends BaseListFragment impleme
 	}
 
 	private void updateTextCount() {
-		if (mTextCountView != null) {
-			final String text = mEditText != null ? ParseUtils.parseString(mEditText.getText()) : null;
-			final int count = mValidator.getTweetLength(text);
-			final float hue = count < Validator.MAX_TWEET_LENGTH ? count >= Validator.MAX_TWEET_LENGTH - 10 ? 5 * (Validator.MAX_TWEET_LENGTH - count)
-					: 50
-					: 0;
-			final float[] hsv = new float[] { hue, 1.0f, 1.0f };
-			mTextCountView.setTextColor(count >= Validator.MAX_TWEET_LENGTH - 10 ? Color.HSVToColor(0x80, hsv)
-					: 0x80808080);
-			mTextCountView.setText(getLocalizedNumber(mLocale, Validator.MAX_TWEET_LENGTH - count));
-		}
+		if (mTextCountView == null) return;
+		final int max = Validator.MAX_TWEET_LENGTH;
+		final String text = mEditText != null ? ParseUtils.parseString(mEditText.getText()) : null;
+		final int count = mValidator.getTweetLength(text);
+		final float hue = count < max ? count >= max - 10 ? 5 * (max - count) : 50 : 0;
+		final float[] hsv = new float[] { hue, 1.0f, 1.0f };
+		mTextCountView.setTextColor(count >= max - 10 ? Color.HSVToColor(0x80, hsv) : 0x80808080);
+		mTextCountView.setText(getLocalizedNumber(mLocale, max - count));
 	}
 
 	private static class AccountsAdapter extends ArrayAdapter<Account> {
 
 		public AccountsAdapter(final Context context) {
 			super(context, R.layout.spinner_item, Account.getAccounts(context, true));
-			setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+			setDropDownViewResource(android.R.layout.simple_list_item_1);
+		}
+
+		@Override
+		public View getDropDownView(final int position, final View convertView, final ViewGroup parent) {
+			final View view = super.getDropDownView(position, convertView, parent);
+			final TextView text1 = (TextView) view.findViewById(android.R.id.text1);
+			final Account account = getItem(position);
+			text1.setText(account.name);
+			return view;
+		}
+
+		@Override
+		public View getView(final int position, final View convertView, final ViewGroup parent) {
+			final View view = super.getView(position, convertView, parent);
+			final TextView text1 = (TextView) view.findViewById(android.R.id.text1);
+			final Account account = getItem(position);
+			text1.setText(account.name);
+			return view;
 		}
 
 	}

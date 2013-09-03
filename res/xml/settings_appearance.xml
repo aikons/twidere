@@ -42,7 +42,7 @@
 			android:title="@string/preview"/>
 
 		<com.robobunny.SeekBarPreference
-			android:defaultValue="15"
+			android:defaultValue="@integer/default_text_size"
 			android:key="text_size_int"
 			android:max="24"
 			android:summary="@string/text_size_summary"
@@ -102,11 +102,11 @@
 		android:key="cat_dual_pane_layout"
 		android:title="@string/dual_pane_layout">
 		<CheckBoxPreference
-			android:defaultValue="@bool/default_dual_pane_mode"
+			android:defaultValue="@bool/is_large_screen"
 			android:key="dual_pane_in_portrait"
 			android:title="@string/portrait"/>
 		<CheckBoxPreference
-			android:defaultValue="@bool/default_dual_pane_mode"
+			android:defaultValue="@bool/is_large_screen"
 			android:key="dual_pane_in_landscape"
 			android:title="@string/landscape"/>
 	</PreferenceCategory>

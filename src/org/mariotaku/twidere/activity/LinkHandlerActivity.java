@@ -25,10 +25,12 @@ import static org.mariotaku.twidere.util.Utils.getDefaultAccountId;
 import static org.mariotaku.twidere.util.Utils.isMyAccount;
 import static org.mariotaku.twidere.util.Utils.matchLinkId;
 
+import org.mariotaku.actionbarcompat.ActionBar;
 import org.mariotaku.twidere.R;
 import org.mariotaku.twidere.fragment.DirectMessagesConversationFragment;
 import org.mariotaku.twidere.fragment.IncomingFriendshipsFragment;
 import org.mariotaku.twidere.fragment.SavedSearchesListFragment;
+import org.mariotaku.twidere.fragment.SearchFragment;
 import org.mariotaku.twidere.fragment.StatusFragment;
 import org.mariotaku.twidere.fragment.StatusRetweetersListFragment;
 import org.mariotaku.twidere.fragment.StatusesListFragment;
@@ -45,6 +47,7 @@ import org.mariotaku.twidere.fragment.UserMentionsFragment;
 import org.mariotaku.twidere.fragment.UserProfileFragment;
 import org.mariotaku.twidere.fragment.UserTimelineFragment;
 import org.mariotaku.twidere.fragment.UsersListFragment;
+import org.mariotaku.twidere.util.MultiSelectEventHandler;
 import org.mariotaku.twidere.util.ParseUtils;
 
 import android.app.Activity;
@@ -52,17 +55,21 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentManagerTrojan;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.NavUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
 
-public class LinkHandlerActivity extends MultiSelectActivity {
+public class LinkHandlerActivity extends TwidereSwipeBackActivity {
 
 	private Fragment mFragment;
+
+	private MultiSelectEventHandler mMultiSelectHandler;
+
+	private ActionBar mActionBar;
+
+	private boolean mFinishOnly;
 
 	/**
 	 * Base action bar-aware implementation for
@@ -83,21 +90,10 @@ public class LinkHandlerActivity extends MultiSelectActivity {
 	public boolean onOptionsItemSelected(final MenuItem item) {
 		switch (item.getItemId()) {
 			case MENU_HOME: {
-				final FragmentManager fm = getSupportFragmentManager();
-				if (isDualPaneMode()) {
-					final int count = fm.getBackStackEntryCount();
-					if (count == 0) {
-						NavUtils.navigateUpFromSameTask(this);
-						// onBackPressed();
-					} else if (!FragmentManagerTrojan.isStateSaved(fm)) {
-						for (int i = 0; i < count; i++) {
-							fm.popBackStackImmediate();
-						}
-						setSupportProgressBarIndeterminateVisibility(false);
-					}
+				if (mFinishOnly) {
+					finish();
 				} else {
 					NavUtils.navigateUpFromSameTask(this);
-					// onBackPressed();
 				}
 				break;
 			}
@@ -106,44 +102,23 @@ public class LinkHandlerActivity extends MultiSelectActivity {
 	}
 
 	@Override
-	protected int getDarkThemeRes() {
-		return R.style.Theme_Twidere_DialogWhenLarge;
-	}
-
-	// This simply disables dual pane layout.
-	@Override
-	protected int getDualPaneLayoutRes() {
-		return getNormalLayoutRes();
-	}
-
-	@Override
-	protected int getLightThemeRes() {
-		return R.style.Theme_Twidere_Light_DialogWhenLarge;
-	}
-
-	@Override
-	protected int getNormalLayoutRes() {
-		return R.layout.link_handler;
-	}
-
-	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
 		requestSupportWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
+		mMultiSelectHandler = new MultiSelectEventHandler(this);
+		mMultiSelectHandler.dispatchOnCreate();
 		super.onCreate(savedInstanceState);
-		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		setContentView(R.layout.link_handler);
+		mActionBar = getSupportActionBar();
+		mActionBar.setDisplayHomeAsUpEnabled(true);
 		setSupportProgressBarIndeterminateVisibility(false);
 		final Intent intent = getIntent();
 		final Uri data = intent.getData();
 		if (data != null) {
 			if (setFragment(data)) {
 				if (mFragment != null) {
-					if (isDualPaneMode()) {
-						showFragment(mFragment, true);
-					} else {
-						final FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-						ft.replace(R.id.main, mFragment);
-						ft.commit();
-					}
+					final FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+					ft.replace(R.id.main, mFragment);
+					ft.commit();
 					return;
 				} else {
 					finish();
@@ -156,19 +131,17 @@ public class LinkHandlerActivity extends MultiSelectActivity {
 
 	@Override
 	protected void onStart() {
-		if (isDualPaneMode() && mFragment != null) {
-			final FragmentManager fm = getSupportFragmentManager();
-			final Fragment f = fm.findFragmentById(R.id.main);
-			if (f != null) {
-				final FragmentTransaction ft = fm.beginTransaction();
-				ft.remove(f);
-				ft.commit();
-			}
-		}
 		super.onStart();
+		mMultiSelectHandler.dispatchOnStart();
 	}
 
 	@Override
+	protected void onStop() {
+		mMultiSelectHandler.dispatchOnStop();
+		super.onStop();
+	}
+
+	// @Override
 	protected boolean shouldDisableDialogWhenLargeMode() {
 		return false;
 	}
@@ -410,15 +383,34 @@ public class LinkHandlerActivity extends MultiSelectActivity {
 					fragment = new StatusesListFragment();
 					break;
 				}
-				case LINK_ID_RETWEETERS: {
+				case LINK_ID_STATUS_RETWEETERS: {
+					setTitle(R.string.users_retweeted_this);
 					fragment = new StatusRetweetersListFragment();
+					if (!args.containsKey(INTENT_KEY_STATUS_ID)) {
+						final String param_status_id = uri.getQueryParameter(QUERY_PARAM_STATUS_ID);
+						args.putLong(INTENT_KEY_STATUS_ID, ParseUtils.parseLong(param_status_id));
+					}
+					break;
+				}
+				case LINK_ID_SEARCH: {
+					setTitle(android.R.string.search_go);
+					final String param_query = uri.getQueryParameter(QUERY_PARAM_QUERY);
+					if (isEmpty(param_query)) {
+						finish();
+						return false;
+					}
+					args.putString(INTENT_KEY_QUERY, param_query);
+					mActionBar.setSubtitle(param_query);
+					fragment = new SearchFragment();
 					break;
 				}
 				default: {
-					break;
+					finish();
+					return false;
 				}
 			}
 			final String param_account_id = uri.getQueryParameter(QUERY_PARAM_ACCOUNT_ID);
+			mFinishOnly = Boolean.parseBoolean(uri.getQueryParameter(QUERY_PARAM_FINISH_ONLY));
 			if (param_account_id != null) {
 				args.putLong(INTENT_KEY_ACCOUNT_ID, ParseUtils.parseLong(param_account_id));
 			} else {

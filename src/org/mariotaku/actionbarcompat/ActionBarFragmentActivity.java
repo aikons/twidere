@@ -3,6 +3,7 @@ package org.mariotaku.actionbarcompat;
 import android.annotation.SuppressLint;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -19,6 +20,7 @@ public class ActionBarFragmentActivity extends FragmentActivity {
 	protected Fragment mAttachedFragment;
 
 	private ActionModeCompat mActionModeCompat;
+	private final Handler mHandler = new Handler();
 
 	private int mWindowFeatureId;
 
@@ -108,6 +110,10 @@ public class ActionBarFragmentActivity extends FragmentActivity {
 		return true;
 	}
 
+	public final boolean postDelayed(final Runnable r, final long delayMillis) {
+		return mHandler.postDelayed(r, delayMillis);
+	}
+
 	public void requestSupportWindowFeature(final int featureId) {
 		mWindowFeatureId = featureId;
 		if (mActionBarCompat instanceof ActionBarCompatNative) {
@@ -139,6 +145,16 @@ public class ActionBarFragmentActivity extends FragmentActivity {
 	}
 
 	@Override
+	protected void onStart() {
+		super.onStart();
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
+			postDelayed(new InvalidateOptionsMenuRunnable(), 750);
+		} else {
+			runOnUiThread(new InvalidateOptionsMenuRunnable());
+		}
+	}
+
+	@Override
 	protected void onTitleChanged(final CharSequence title, final int color) {
 		if (mActionBarCompat instanceof ActionBarCompatBase) {
 			getSupportActionBar().setTitle(title);
@@ -159,4 +175,12 @@ public class ActionBarFragmentActivity extends FragmentActivity {
 		}
 	}
 
+	private class InvalidateOptionsMenuRunnable implements Runnable {
+
+		@Override
+		public void run() {
+			invalidateSupportOptionsMenu();
+		}
+
+	}
 }

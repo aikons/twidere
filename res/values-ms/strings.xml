@@ -17,13 +17,11 @@
   <string name="clear_databases_summary">Bersihkan semua tweet, profail, mesej. Maklumat akaun anda tidak akan hilang.</string>
   <string name="leftside_compose_button_summary">Letakkan butang karang ke kiri.</string>
   <string name="load_more_automatically_summary">Memuatkan lebih kandungan (e.g. gambar, peta, status) secara automatik</string>
-  <string name="longclick_to_delete">Klik lebih lama untuk memadamkan.</string>
   <string name="quote_format_summary">\"[TEKS]\" = teks Tweet\n\"[NAMA] = nama pengguna Twitter</string>
   <string name="overwrite_confirm">Fail telah wujud, tindihkan?</string>
   <string name="mute_user">Bisukan pengguna</string>
   <string name="user_muted">Pengguna ditambah ke dalam senarai tapis. Anda tidak akan melihat tweet dari pengguna ini di dalam senarai garis masa/sebutan anda.</string>
   <string name="load_images">Memuatkan gambar</string>
-  <string name="refresh_after_tweet_summary">Memuatkan garis masa dan sebutan selepas menghantar tweet.</string>
   <string name="solid_color_background_summary">Ini mungkin berguna jika skrin peranti anda ialah AMOLED.</string>
   <string name="image_uploader_default">Lalai (Twitter)</string>
   <string name="error_message_image_upload_failed">Gagal memuat naik imej.</string>
@@ -42,6 +40,5 @@
   <string name="address">Alamat (Boleh jadi sebagai alamat host yang lain)</string>
   <string name="add_host_mapping">Tambah pemetaan hos</string>
   <string name="tcp_dns_query">TCP DNS Query</string>
-  <string name="tcp_dns_query_summary">Guna Protokol TCP untuk membuat permintaan DNS, ini boleh mengelakkan DNS Cache Poisoning.</string>
   <string name="dns_server_summary">Tetapkan pelayan DNS untuk permintaan API.</string>
 </resources>

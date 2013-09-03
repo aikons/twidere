@@ -63,19 +63,20 @@ import org.mariotaku.twidere.activity.CameraCropActivity;
 import org.mariotaku.twidere.activity.DualPaneActivity;
 import org.mariotaku.twidere.activity.HomeActivity;
 import org.mariotaku.twidere.activity.ImageViewerActivity;
+import org.mariotaku.twidere.adapter.iface.IBaseAdapter;
 import org.mariotaku.twidere.app.TwidereApplication;
 import org.mariotaku.twidere.fragment.ActivitiesAboutMeFragment;
 import org.mariotaku.twidere.fragment.ActivitiesByFriendsFragment;
 import org.mariotaku.twidere.fragment.DirectMessagesConversationFragment;
 import org.mariotaku.twidere.fragment.IncomingFriendshipsFragment;
 import org.mariotaku.twidere.fragment.SavedSearchesListFragment;
+import org.mariotaku.twidere.fragment.SearchFragment;
 import org.mariotaku.twidere.fragment.SearchTweetsFragment;
 import org.mariotaku.twidere.fragment.SearchUsersFragment;
 import org.mariotaku.twidere.fragment.SensitiveContentWarningDialogFragment;
 import org.mariotaku.twidere.fragment.StatusFragment;
 import org.mariotaku.twidere.fragment.StatusRetweetersListFragment;
 import org.mariotaku.twidere.fragment.StatusesListFragment;
-import org.mariotaku.twidere.fragment.TrendsFragment;
 import org.mariotaku.twidere.fragment.UserBlocksListFragment;
 import org.mariotaku.twidere.fragment.UserFavoritesFragment;
 import org.mariotaku.twidere.fragment.UserFollowersFragment;
@@ -130,6 +131,7 @@ import twitter4j.conf.ConfigurationBuilder;
 import twitter4j.http.HostAddressResolver;
 import twitter4j.http.HttpClientWrapper;
 import twitter4j.http.HttpResponse;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -193,6 +195,8 @@ import de.keyboardsurfer.android.widget.crouton.CroutonStyle;
 
 public final class Utils implements Constants {
 
+	private static final String UA_TEMPLATE = "Mozilla/5.0 (Linux; Android %s; %s Build/%s) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/27.0.1453.111 Safari/537.36";
+
 	private static final UriMatcher CONTENT_PROVIDER_URI_MATCHER = new UriMatcher(UriMatcher.NO_MATCH);
 	private static final UriMatcher LINK_HANDLER_URI_MATCHER = new UriMatcher(UriMatcher.NO_MATCH);
 
@@ -226,8 +230,8 @@ public final class Utils implements Constants {
 		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_CACHED_STATUSES, TABLE_ID_CACHED_STATUSES);
 		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_CACHED_HASHTAGS, TABLE_ID_CACHED_HASHTAGS);
 		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_CACHED_HASHTAGS, TABLE_ID_CACHED_HASHTAGS);
-		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_NOTIFICATIONS + "/#",
-				VIRTUAL_TABLE_ID_NOTIFICATIONS);
+		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_NOTIFICATIONS + "/#", VIRTUAL_TABLE_ID_NOTIFICATIONS);
+		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_NOTIFICATIONS, VIRTUAL_TABLE_ID_NOTIFICATIONS);
 		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_PERMISSIONS, VIRTUAL_TABLE_ID_PERMISSIONS);
 		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_DNS + "/*", VIRTUAL_TABLE_ID_DNS);
 		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_CACHED_IMAGES, VIRTUAL_TABLE_ID_CACHED_IMAGES);
@@ -254,7 +258,8 @@ public final class Utils implements Constants {
 		LINK_HANDLER_URI_MATCHER.addURI(AUTHORITY_INCOMING_FRIENDSHIPS, null, LINK_ID_INCOMING_FRIENDSHIPS);
 		LINK_HANDLER_URI_MATCHER.addURI(AUTHORITY_USERS, null, LINK_ID_USERS);
 		LINK_HANDLER_URI_MATCHER.addURI(AUTHORITY_STATUSES, null, LINK_ID_STATUSES);
-		LINK_HANDLER_URI_MATCHER.addURI(AUTHORITY_STATUS_RETWEETERS, null, LINK_ID_RETWEETERS);
+		LINK_HANDLER_URI_MATCHER.addURI(AUTHORITY_STATUS_RETWEETERS, null, LINK_ID_STATUS_RETWEETERS);
+		LINK_HANDLER_URI_MATCHER.addURI(AUTHORITY_SEARCH, null, LINK_ID_SEARCH);
 
 		CUSTOM_TABS_FRAGMENT_MAP.put(AUTHORITY_LISTS, UserListsListFragment.class);
 		CUSTOM_TABS_FRAGMENT_MAP.put(AUTHORITY_LIST_MEMBERS, UserListMembersFragment.class);
@@ -268,7 +273,6 @@ public final class Utils implements Constants {
 		CUSTOM_TABS_FRAGMENT_MAP.put(AUTHORITY_USER_FRIENDS, UserFriendsFragment.class);
 		CUSTOM_TABS_FRAGMENT_MAP.put(AUTHORITY_USER_MENTIONS, UserMentionsFragment.class);
 		CUSTOM_TABS_FRAGMENT_MAP.put(AUTHORITY_USER_TIMELINE, UserTimelineFragment.class);
-		CUSTOM_TABS_FRAGMENT_MAP.put(AUTHORITY_TRENDS, TrendsFragment.class);
 		CUSTOM_TABS_FRAGMENT_MAP.put(AUTHORITY_ACTIVITIES_ABOUT_ME, ActivitiesAboutMeFragment.class);
 		CUSTOM_TABS_FRAGMENT_MAP.put(AUTHORITY_ACTIVITIES_BY_FRIENDS, ActivitiesByFriendsFragment.class);
 
@@ -283,7 +287,6 @@ public final class Utils implements Constants {
 		CUSTOM_TABS_TYPE_NAME_MAP.put(AUTHORITY_USER_FRIENDS, R.string.following);
 		CUSTOM_TABS_TYPE_NAME_MAP.put(AUTHORITY_USER_MENTIONS, R.string.user_mentions);
 		CUSTOM_TABS_TYPE_NAME_MAP.put(AUTHORITY_USER_TIMELINE, R.string.user_timeline);
-		CUSTOM_TABS_TYPE_NAME_MAP.put(AUTHORITY_TRENDS, R.string.trends);
 		CUSTOM_TABS_TYPE_NAME_MAP.put(AUTHORITY_ACTIVITIES_ABOUT_ME, R.string.activities_about_me);
 		CUSTOM_TABS_TYPE_NAME_MAP.put(AUTHORITY_ACTIVITIES_BY_FRIENDS, R.string.activities_by_friends);
 
@@ -564,6 +567,14 @@ public final class Utils implements Constants {
 		return true;
 	}
 
+	public static void configBaseAdapter(final Context context, final IBaseAdapter adapter) {
+		if (context == null) return;
+		final SharedPreferences pref = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+		adapter.setDisplayProfileImage(pref.getBoolean(PREFERENCE_KEY_DISPLAY_PROFILE_IMAGE, true));
+		adapter.setNameDisplayOption(pref.getString(PREFERENCE_KEY_NAME_DISPLAY_OPTION, NAME_DISPLAY_OPTION_BOTH));
+		adapter.setTextSize(pref.getInt(PREFERENCE_KEY_TEXT_SIZE, getDefaultTextSize(context)));
+	}
+
 	public static void copyStream(final InputStream is, final OutputStream os) throws IOException {
 		final int buffer_size = 8192;
 		final byte[] bytes = new byte[buffer_size];
@@ -808,6 +819,10 @@ public final class Utils implements Constants {
 			}
 		}
 		return builder.build().replace("\n", "<br/>");
+	}
+
+	public static String generateBrowserUserAgent() {
+		return String.format(UA_TEMPLATE, Build.VERSION.RELEASE, Build.MODEL, Build.ID);
 	}
 
 	public static int getAccountColor(final Context context, final long account_id) {
@@ -1070,11 +1085,6 @@ public final class Utils implements Constants {
 		return null;
 	}
 
-	public static String getBrowserUserAgent(final Context context) {
-		if (context == null) return null;
-		return TwidereApplication.getInstance(context).getBrowserUserAgent();
-	}
-
 	public static Bitmap getColorPreviewBitmap(final Context context, final int color) {
 		if (context == null) return null;
 		final float density = context.getResources().getDisplayMetrics().density;
@@ -1130,6 +1140,11 @@ public final class Utils implements Constants {
 		return getAccountScreenName(context, getDefaultAccountId(context));
 	}
 
+	public static int getDefaultTextSize(final Context context) {
+		if (context == null) return 15;
+		return context.getResources().getInteger(R.integer.default_text_size);
+	}
+
 	public static Twitter getDefaultTwitterInstance(final Context context, final boolean include_entities) {
 		if (context == null) return null;
 		return getDefaultTwitterInstance(context, include_entities, true, true);
@@ -1156,10 +1171,12 @@ public final class Utils implements Constants {
 	}
 
 	public static HttpClientWrapper getHttpClient(final int timeout_millis, final boolean ignore_ssl_error,
-			final Proxy proxy, final HostAddressResolver resolver, final String user_agent) {
+			final Proxy proxy, final HostAddressResolver resolver, final String user_agent,
+			final boolean twitter_client_header) {
 		final ConfigurationBuilder cb = new ConfigurationBuilder();
 		cb.setHttpConnectionTimeout(timeout_millis);
 		cb.setIgnoreSSLError(ignore_ssl_error);
+		cb.setIncludeTwitterClientHeader(twitter_client_header);
 		if (proxy != null && !Proxy.NO_PROXY.equals(proxy)) {
 			final SocketAddress address = proxy.address();
 			if (address instanceof InetSocketAddress) {
@@ -1180,9 +1197,9 @@ public final class Utils implements Constants {
 		final SharedPreferences prefs = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
 		final int timeout_millis = prefs.getInt(PREFERENCE_KEY_CONNECTION_TIMEOUT, 10000) * 1000;
 		final Proxy proxy = getProxy(context);
-		final String user_agent = getBrowserUserAgent(context);
+		final String user_agent = generateBrowserUserAgent();
 		final HostAddressResolver resolver = TwidereApplication.getInstance(context).getHostAddressResolver();
-		return getHttpClient(timeout_millis, true, proxy, resolver, user_agent);
+		return getHttpClient(timeout_millis, true, proxy, resolver, user_agent, false);
 	}
 
 	public static String getImageMimeType(final File image) {
@@ -1259,14 +1276,14 @@ public final class Utils implements Constants {
 		return images;
 	}
 
-	public static String getImageUploadStatus(final Context context, final String link, final String text) {
+	public static String getImageUploadStatus(final Context context, final CharSequence link, final CharSequence text) {
 		if (context == null) return null;
 		String image_upload_format = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE)
 				.getString(PREFERENCE_KEY_IMAGE_UPLOAD_FORMAT, PREFERENCE_DEFAULT_IMAGE_UPLOAD_FORMAT);
 		if (isEmpty(image_upload_format)) {
 			image_upload_format = PREFERENCE_DEFAULT_IMAGE_UPLOAD_FORMAT;
 		}
-		if (link == null) return text;
+		if (link == null) return ParseUtils.parseString(text);
 		return image_upload_format.replace(FORMAT_PATTERN_LINK, link).replace(FORMAT_PATTERN_TEXT, text);
 	}
 
@@ -1293,8 +1310,12 @@ public final class Utils implements Constants {
 	}
 
 	public static long[] getNewestMessageIdsFromDatabase(final Context context, final Uri uri) {
-		if (context == null || uri == null) return null;
 		final long[] account_ids = getActivatedAccountIds(context);
+		return getNewestMessageIdsFromDatabase(context, uri, account_ids);
+	}
+
+	public static long[] getNewestMessageIdsFromDatabase(final Context context, final Uri uri, final long[] account_ids) {
+		if (context == null || uri == null || account_ids == null) return null;
 		final String[] cols = new String[] { DirectMessages.MESSAGE_ID };
 		final ContentResolver resolver = context.getContentResolver();
 		final long[] status_ids = new long[account_ids.length];
@@ -1317,8 +1338,12 @@ public final class Utils implements Constants {
 	}
 
 	public static long[] getNewestStatusIdsFromDatabase(final Context context, final Uri uri) {
-		if (context == null || uri == null) return null;
 		final long[] account_ids = getActivatedAccountIds(context);
+		return getNewestStatusIdsFromDatabase(context, uri, account_ids);
+	}
+
+	public static long[] getNewestStatusIdsFromDatabase(final Context context, final Uri uri, final long[] account_ids) {
+		if (context == null || uri == null || account_ids == null) return null;
 		final String[] cols = new String[] { Statuses.STATUS_ID };
 		final ContentResolver resolver = context.getContentResolver();
 		final long[] status_ids = new long[account_ids.length];
@@ -1338,6 +1363,12 @@ public final class Utils implements Constants {
 			idx++;
 		}
 		return status_ids;
+	}
+
+	public static String getNonEmptyString(final SharedPreferences pref, final String key, final String def) {
+		if (pref == null) return def;
+		final String val = pref.getString(key, def);
+		return isEmpty(val) ? def : val;
 	}
 
 	public static String getNormalTwitterProfileImage(final String url) {
@@ -1608,7 +1639,7 @@ public final class Utils implements Constants {
 					.getColumnIndex(Tabs.TYPE), idx_arguments = cur.getColumnIndex(Tabs.ARGUMENTS), idx_position = cur
 					.getColumnIndex(Tabs.POSITION);
 			while (!cur.isAfterLast()) {
-				final int position = cur.getInt(idx_position) + HomeActivity.TAB_POSITION_MESSAGES + 1;
+				final int position = cur.getInt(idx_position) + HomeActivity.TAB_POSITION_TRENDS + 1;
 				final String icon_type = cur.getString(idx_icon);
 				final String type = cur.getString(idx_type);
 				final String name = cur.getString(idx_name);
@@ -1642,6 +1673,7 @@ public final class Utils implements Constants {
 		return getTextCount(string);
 	}
 
+	@SuppressLint("InlinedApi")
 	public static int getThemeColor(final Context context) {
 		if (context == null) return Color.TRANSPARENT;
 		final int def = context.getResources().getColor(R.color.holo_blue_light);
@@ -1685,23 +1717,23 @@ public final class Utils implements Constants {
 		}
 		if (context == null) return null;
 		final TwidereApplication app = TwidereApplication.getInstance(context);
-		final SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME,
-				Context.MODE_PRIVATE);
-		final int connection_timeout = preferences.getInt(PREFERENCE_KEY_CONNECTION_TIMEOUT, 10) * 1000;
-		final boolean enable_gzip_compressing = preferences.getBoolean(PREFERENCE_KEY_GZIP_COMPRESSING, true);
-		final boolean ignore_ssl_error = preferences.getBoolean(PREFERENCE_KEY_IGNORE_SSL_ERROR, false);
-		final boolean enable_proxy = preferences.getBoolean(PREFERENCE_KEY_ENABLE_PROXY, false);
-		final String consumer_key = preferences.getString(PREFERENCE_KEY_CONSUMER_KEY, TWITTER_CONSUMER_KEY).trim();
-		final String consumer_secret = preferences.getString(PREFERENCE_KEY_CONSUMER_SECRET, TWITTER_CONSUMER_SECRET)
-				.trim();
+		final SharedPreferences prefs = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+		final int connection_timeout = prefs.getInt(PREFERENCE_KEY_CONNECTION_TIMEOUT, 10) * 1000;
+		final boolean enable_gzip_compressing = prefs.getBoolean(PREFERENCE_KEY_GZIP_COMPRESSING, true);
+		final boolean ignore_ssl_error = prefs.getBoolean(PREFERENCE_KEY_IGNORE_SSL_ERROR, false);
+		final boolean enable_proxy = prefs.getBoolean(PREFERENCE_KEY_ENABLE_PROXY, false);
+		// Here I use old consumer key/secret because it's default key for older
+		// versions
+		final String pref_consumer_key = prefs.getString(PREFERENCE_KEY_CONSUMER_KEY, TWITTER_CONSUMER_KEY);
+		final String pref_consumer_secret = prefs.getString(PREFERENCE_KEY_CONSUMER_SECRET, TWITTER_CONSUMER_SECRET);
 		final StringBuilder where = new StringBuilder();
 		where.append(Accounts.ACCOUNT_ID + " = " + account_id);
-		final Cursor cur = context.getContentResolver().query(Accounts.CONTENT_URI, Accounts.COLUMNS, where.toString(),
+		final Cursor c = context.getContentResolver().query(Accounts.CONTENT_URI, Accounts.COLUMNS, where.toString(),
 				null, null);
-		if (cur == null) return null;
+		if (c == null) return null;
 		try {
-			if (cur.getCount() > 0) {
-				cur.moveToFirst();
+			if (c.getCount() > 0) {
+				c.moveToFirst();
 				final ConfigurationBuilder cb = new ConfigurationBuilder();
 				cb.setHostAddressResolver(app.getHostAddressResolver());
 				if (use_apache_httpclient) {
@@ -1712,19 +1744,19 @@ public final class Utils implements Constants {
 				cb.setGZIPEnabled(enable_gzip_compressing);
 				cb.setIgnoreSSLError(ignore_ssl_error);
 				if (enable_proxy) {
-					final String proxy_host = preferences.getString(PREFERENCE_KEY_PROXY_HOST, null);
-					final int proxy_port = ParseUtils.parseInt(preferences.getString(PREFERENCE_KEY_PROXY_PORT, "-1"));
+					final String proxy_host = prefs.getString(PREFERENCE_KEY_PROXY_HOST, null);
+					final int proxy_port = ParseUtils.parseInt(prefs.getString(PREFERENCE_KEY_PROXY_PORT, "-1"));
 					if (!isEmpty(proxy_host) && proxy_port > 0) {
 						cb.setHttpProxyHost(proxy_host);
 						cb.setHttpProxyPort(proxy_port);
 					}
 				}
-				final String rest_base_url = cur.getString(cur.getColumnIndexOrThrow(Accounts.REST_BASE_URL));
-				final String signing_rest_base_url = cur.getString(cur
-						.getColumnIndexOrThrow(Accounts.SIGNING_REST_BASE_URL));
-				final String oauth_base_url = cur.getString(cur.getColumnIndexOrThrow(Accounts.OAUTH_BASE_URL));
-				final String signing_oauth_base_url = cur.getString(cur
-						.getColumnIndexOrThrow(Accounts.SIGNING_OAUTH_BASE_URL));
+				final String rest_base_url = c.getString(c.getColumnIndex(Accounts.REST_BASE_URL));
+				final String signing_rest_base_url = c.getString(c.getColumnIndex(Accounts.SIGNING_REST_BASE_URL));
+				final String oauth_base_url = c.getString(c.getColumnIndex(Accounts.OAUTH_BASE_URL));
+				final String signing_oauth_base_url = c.getString(c.getColumnIndex(Accounts.SIGNING_OAUTH_BASE_URL));
+				final String consumer_key = trim(c.getString(c.getColumnIndex(Accounts.CONSUMER_KEY)));
+				final String consumer_secret = trim(c.getString(c.getColumnIndex(Accounts.CONSUMER_SECRET)));
 				if (!isEmpty(rest_base_url)) {
 					cb.setRestBaseURL(rest_base_url);
 				}
@@ -1739,24 +1771,27 @@ public final class Utils implements Constants {
 				}
 				cb.setIncludeEntitiesEnabled(include_entities);
 				cb.setIncludeRTsEnabled(include_retweets);
-				switch (cur.getInt(cur.getColumnIndexOrThrow(Accounts.AUTH_TYPE))) {
+				switch (c.getInt(c.getColumnIndexOrThrow(Accounts.AUTH_TYPE))) {
 					case Accounts.AUTH_TYPE_OAUTH:
 					case Accounts.AUTH_TYPE_XAUTH: {
-						if (isEmpty(consumer_key) || isEmpty(consumer_secret)) {
-							cb.setOAuthConsumerKey(TWITTER_CONSUMER_KEY);
-							cb.setOAuthConsumerSecret(TWITTER_CONSUMER_SECRET);
-						} else {
+						if (!isEmpty(consumer_key) && !isEmpty(consumer_secret)) {
 							cb.setOAuthConsumerKey(consumer_key);
 							cb.setOAuthConsumerSecret(consumer_secret);
+						} else if (!isEmpty(pref_consumer_key) && !isEmpty(pref_consumer_secret)) {
+							cb.setOAuthConsumerKey(pref_consumer_key);
+							cb.setOAuthConsumerSecret(pref_consumer_secret);
+						} else {
+							cb.setOAuthConsumerKey(TWITTER_CONSUMER_KEY);
+							cb.setOAuthConsumerSecret(TWITTER_CONSUMER_SECRET);
 						}
-						final String oauth_token = cur.getString(cur.getColumnIndexOrThrow(Accounts.OAUTH_TOKEN));
-						final String token_secret = cur.getString(cur.getColumnIndexOrThrow(Accounts.TOKEN_SECRET));
+						final String oauth_token = c.getString(c.getColumnIndexOrThrow(Accounts.OAUTH_TOKEN));
+						final String token_secret = c.getString(c.getColumnIndexOrThrow(Accounts.TOKEN_SECRET));
 						if (isEmpty(oauth_token) || isEmpty(token_secret)) return null;
 						return new TwitterFactory(cb.build()).getInstance(new AccessToken(oauth_token, token_secret));
 					}
 					case Accounts.AUTH_TYPE_BASIC: {
-						final String screen_name = cur.getString(cur.getColumnIndexOrThrow(Accounts.SCREEN_NAME));
-						final String password = cur.getString(cur.getColumnIndexOrThrow(Accounts.BASIC_AUTH_PASSWORD));
+						final String screen_name = c.getString(c.getColumnIndexOrThrow(Accounts.SCREEN_NAME));
+						final String password = c.getString(c.getColumnIndexOrThrow(Accounts.BASIC_AUTH_PASSWORD));
 						if (isEmpty(screen_name) || isEmpty(password)) return null;
 						return new TwitterFactory(cb.build())
 								.getInstance(new BasicAuthorization(screen_name, password));
@@ -1769,7 +1804,7 @@ public final class Utils implements Constants {
 			}
 			return null;
 		} finally {
-			cur.close();
+			c.close();
 		}
 	}
 
@@ -1846,6 +1881,7 @@ public final class Utils implements Constants {
 		}
 	}
 
+	@SuppressLint("InlinedApi")
 	public static boolean isBatteryOkay(final Context context) {
 		if (context == null) return false;
 		final Context app = context.getApplicationContext();
@@ -1858,7 +1894,7 @@ public final class Utils implements Constants {
 		return plugged || level / scale > 0.15f;
 	}
 
-	public static boolean isDebugBuild(final Context context) {
+	public static boolean isDebuggable(final Context context) {
 		if (context == null) return false;
 		final ApplicationInfo info;
 		try {
@@ -2084,6 +2120,8 @@ public final class Utils implements Constants {
 				if (user.getId() != access_token.getUserId()) return null;
 				values.put(Accounts.OAUTH_TOKEN, access_token.getToken());
 				values.put(Accounts.TOKEN_SECRET, access_token.getTokenSecret());
+				values.put(Accounts.CONSUMER_KEY, conf.getOAuthConsumerKey());
+				values.put(Accounts.CONSUMER_SECRET, conf.getOAuthConsumerSecret());
 				break;
 			}
 		}
@@ -2092,6 +2130,7 @@ public final class Utils implements Constants {
 		values.put(Accounts.SCREEN_NAME, user.getScreenName());
 		values.put(Accounts.NAME, user.getName());
 		values.put(Accounts.PROFILE_IMAGE_URL, ParseUtils.parseString(user.getProfileImageUrlHttps()));
+		values.put(Accounts.PROFILE_BANNER_URL, ParseUtils.parseString(user.getProfileBannerImageUrl()));
 		values.put(Accounts.USER_COLOR, color);
 		values.put(Accounts.IS_ACTIVATED, 1);
 		values.put(Accounts.REST_BASE_URL, conf.getRestBaseURL());
@@ -2396,6 +2435,26 @@ public final class Utils implements Constants {
 			builder.scheme(SCHEME_TWIDERE);
 			builder.authority(AUTHORITY_SAVED_SEARCHES);
 			builder.appendQueryParameter(QUERY_PARAM_ACCOUNT_ID, String.valueOf(account_id));
+			activity.startActivity(new Intent(Intent.ACTION_VIEW, builder.build()));
+		}
+	}
+
+	public static void openSearch(final Activity activity, final long account_id, final String query) {
+		if (activity == null) return;
+		if (activity instanceof DualPaneActivity && ((DualPaneActivity) activity).isDualPaneMode()) {
+			final DualPaneActivity dual_pane_activity = (DualPaneActivity) activity;
+			final Fragment fragment = new SearchFragment();
+			final Bundle args = new Bundle();
+			args.putLong(INTENT_KEY_ACCOUNT_ID, account_id);
+			args.putString(INTENT_KEY_QUERY, query);
+			fragment.setArguments(args);
+			dual_pane_activity.showAtPane(DualPaneActivity.PANE_LEFT, fragment, true);
+		} else {
+			final Uri.Builder builder = new Uri.Builder();
+			builder.scheme(SCHEME_TWIDERE);
+			builder.authority(AUTHORITY_SEARCH);
+			builder.appendQueryParameter(QUERY_PARAM_ACCOUNT_ID, String.valueOf(account_id));
+			builder.appendQueryParameter(QUERY_PARAM_QUERY, query);
 			activity.startActivity(new Intent(Intent.ACTION_VIEW, builder.build()));
 		}
 	}
@@ -3287,6 +3346,10 @@ public final class Utils implements Constants {
 	public static void showWarnMessage(final Context context, final int resId, final boolean long_message) {
 		if (context == null) return;
 		showWarnMessage(context, context.getText(resId), long_message);
+	}
+
+	public static String trim(final String str) {
+		return str != null ? str.trim() : null;
 	}
 
 	public static String trimLineBreak(final String orig) {

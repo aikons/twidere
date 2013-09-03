@@ -24,9 +24,11 @@ import it.sephiroth.android.library.imagezoom.ImageViewTouch;
 
 import java.io.File;
 
+import me.imid.swipebacklayout.lib.app.SwipeBackActivity;
+
 import org.mariotaku.twidere.Constants;
 import org.mariotaku.twidere.R;
-import org.mariotaku.twidere.loader.AbstractImageLoader.DownloadListener;
+import org.mariotaku.twidere.loader.AbsImageLoader.DownloadListener;
 import org.mariotaku.twidere.loader.ImageLoader;
 import org.mariotaku.twidere.util.SaveImageTask;
 
@@ -35,7 +37,6 @@ import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.Loader;
@@ -44,13 +45,15 @@ import android.view.View.OnClickListener;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 
-public class ImageViewerActivity extends FragmentActivity implements Constants, OnClickListener,
+public class ImageViewerActivity extends SwipeBackActivity implements Constants, OnClickListener,
 		LoaderCallbacks<ImageLoader.Result>, DownloadListener {
 
 	private ImageViewTouch mImageView;
 	private ProgressBar mProgress;
 	private ImageButton mRefreshStopSaveButton;
+
 	private boolean mImageLoaded;
+	private boolean mLoaderInitialized;
 	private File mImageFile;
 	private long mContentLength;
 
@@ -67,7 +70,7 @@ public class ImageViewerActivity extends FragmentActivity implements Constants, 
 			case R.id.refresh_stop_save: {
 				final LoaderManager lm = getSupportLoaderManager();
 				if (!mImageLoaded && !lm.hasRunningLoaders()) {
-					loadImage(false);
+					loadImage();
 				} else if (!mImageLoaded && lm.hasRunningLoaders()) {
 					stopLoading();
 				} else if (mImageLoaded) {
@@ -181,7 +184,7 @@ public class ImageViewerActivity extends FragmentActivity implements Constants, 
 	protected void onCreate(final Bundle icicle) {
 		super.onCreate(icicle);
 		setContentView(R.layout.image_viewer);
-		loadImage(true);
+		loadImage();
 	}
 
 	@Override
@@ -194,10 +197,10 @@ public class ImageViewerActivity extends FragmentActivity implements Constants, 
 	protected void onNewIntent(final Intent intent) {
 		super.onNewIntent(intent);
 		setIntent(intent);
-		loadImage(false);
+		loadImage();
 	}
 
-	private void loadImage(final boolean init) {
+	private void loadImage() {
 		getSupportLoaderManager().destroyLoader(0);
 		final Uri uri = getIntent().getData();
 		if (uri == null) {
@@ -207,8 +210,9 @@ public class ImageViewerActivity extends FragmentActivity implements Constants, 
 		mImageView.setImageBitmap(null);
 		final Bundle args = new Bundle();
 		args.putParcelable(INTENT_KEY_URI, uri);
-		if (init) {
+		if (!mLoaderInitialized) {
 			getSupportLoaderManager().initLoader(0, args, this);
+			mLoaderInitialized = true;
 		} else {
 			getSupportLoaderManager().restartLoader(0, args, this);
 		}

@@ -32,6 +32,7 @@ import org.mariotaku.twidere.util.AsyncTwitterWrapper;
 import org.mariotaku.twidere.util.MessagesManager;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.TypedArray;
@@ -147,6 +148,9 @@ public class BaseActivity extends ActionBarFragmentActivity implements Constants
 		if (croutons != null) {
 			croutons.addMessageCallback(this);
 		}
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
+			postDelayed(new SetActionBarBackgroundRunnable(), 50);
+		}
 	}
 
 	@Override
@@ -180,6 +184,7 @@ public class BaseActivity extends ActionBarFragmentActivity implements Constants
 		return true;
 	}
 
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
 	private void setHardwareAcceleration() {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) return;
 		final SharedPreferences preferences = getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
@@ -202,4 +207,14 @@ public class BaseActivity extends ActionBarFragmentActivity implements Constants
 			getWindow().setBackgroundDrawableResource(is_dark_theme ? android.R.color.black : android.R.color.white);
 		}
 	}
+
+	private class SetActionBarBackgroundRunnable implements Runnable {
+
+		@Override
+		public void run() {
+			setActionBarBackground();
+		}
+
+	}
+
 }

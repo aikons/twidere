@@ -29,7 +29,6 @@ import org.mariotaku.twidere.provider.TweetStore.CachedHashtags;
 import org.mariotaku.twidere.provider.TweetStore.CachedUsers;
 import org.mariotaku.twidere.provider.TweetStore.CachedValues;
 import org.mariotaku.twidere.util.ImageLoaderWrapper;
-import org.mariotaku.twidere.view.StatusComposeEditText;
 
 import android.content.ContentResolver;
 import android.content.Context;
@@ -38,6 +37,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.support.v4.widget.SimpleCursorAdapter;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.FilterQueryProvider;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -54,7 +54,7 @@ public class AutoCompleteAdapter extends SimpleCursorAdapter implements Constant
 	private final ImageLoaderWrapper mProfileImageLoader;
 	private final SharedPreferences mPreferences;
 
-	private final StatusComposeEditText mEditText;
+	private final EditText mEditText;
 
 	private final boolean mDisplayProfileImage;
 
@@ -66,21 +66,19 @@ public class AutoCompleteAdapter extends SimpleCursorAdapter implements Constant
 		this(context, null);
 	}
 
-	public AutoCompleteAdapter(final Context context, final StatusComposeEditText view) {
+	public AutoCompleteAdapter(final Context context, final EditText view) {
 		super(context, R.layout.user_autocomplete_list_item, null, FROM, TO, 0);
 		mEditText = view;
 		mPreferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
 		mResolver = context.getContentResolver();
-		final Context app_context = context.getApplicationContext();
-		mProfileImageLoader = app_context instanceof TwidereApplication ? ((TwidereApplication) app_context)
-				.getImageLoaderWrapper() : null;
-		mDatabase = app_context instanceof TwidereApplication ? ((TwidereApplication) app_context).getSQLiteDatabase()
-				: null;
+		final TwidereApplication app = TwidereApplication.getInstance(context);
+		mProfileImageLoader = app != null ? app.getImageLoaderWrapper() : null;
+		mDatabase = app != null ? app.getSQLiteDatabase() : null;
 		mDisplayProfileImage = mPreferences != null ? mPreferences.getBoolean(PREFERENCE_KEY_DISPLAY_PROFILE_IMAGE,
 				true) : true;
 	}
 
-	public AutoCompleteAdapter(final StatusComposeEditText view) {
+	public AutoCompleteAdapter(final EditText view) {
 		this(view.getContext(), view);
 	}
 

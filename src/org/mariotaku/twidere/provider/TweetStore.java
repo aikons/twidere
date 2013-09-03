@@ -38,17 +38,10 @@ public final class TweetStore {
 
 	public static final String CONTENT_PATH_NULL = "null_content";
 
-	public static final String TABLE_NAME_NOTIFICATIONS = "notifications";
-
-	public static final String CONTENT_PATH_NOTIFICATIONS = TABLE_NAME_NOTIFICATIONS;
-
 	public static final Uri BASE_CONTENT_URI = new Uri.Builder().scheme(ContentResolver.SCHEME_CONTENT)
 			.authority(AUTHORITY).build();
 
 	public static final Uri CONTENT_URI_NULL = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH_NULL);
-
-	public static final Uri CONTENT_URI_NOTOFICATIONS = Uri.withAppendedPath(BASE_CONTENT_URI,
-			CONTENT_PATH_NOTIFICATIONS);
 
 	public static final Uri[] STATUSES_URIS = new Uri[] { Statuses.CONTENT_URI, Mentions.CONTENT_URI,
 			CachedStatuses.CONTENT_URI };
@@ -127,19 +120,26 @@ public final class TweetStore {
 		 */
 		public static final String IS_ACTIVATED = "is_activated";
 
+		public static final String CONSUMER_KEY = "consumer_key";
+
+		public static final String CONSUMER_SECRET = "consumer_secret";
+
 		/**
 		 * User's profile image URL of the status. <br>
 		 * Type: TEXT
 		 */
 		public static final String PROFILE_IMAGE_URL = "profile_image_url";
 
+		public static final String PROFILE_BANNER_URL = "profile_banner_url";
+
 		public static final String[] COLUMNS = new String[] { _ID, NAME, SCREEN_NAME, ACCOUNT_ID, AUTH_TYPE,
-				BASIC_AUTH_PASSWORD, OAUTH_TOKEN, TOKEN_SECRET, REST_BASE_URL, SIGNING_REST_BASE_URL, OAUTH_BASE_URL,
-				SIGNING_OAUTH_BASE_URL, PROFILE_IMAGE_URL, USER_COLOR, IS_ACTIVATED };
+				BASIC_AUTH_PASSWORD, OAUTH_TOKEN, TOKEN_SECRET, CONSUMER_KEY, CONSUMER_SECRET, REST_BASE_URL,
+				SIGNING_REST_BASE_URL, OAUTH_BASE_URL, SIGNING_OAUTH_BASE_URL, PROFILE_IMAGE_URL, PROFILE_BANNER_URL,
+				USER_COLOR, IS_ACTIVATED };
 
 		public static final String[] TYPES = new String[] { TYPE_PRIMARY_KEY, TYPE_TEXT_NOT_NULL, TYPE_TEXT_NOT_NULL,
 				TYPE_INT_UNIQUE, TYPE_INT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT,
-				TYPE_TEXT, TYPE_INT, TYPE_BOOLEAN };
+				TYPE_TEXT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT, TYPE_INT, TYPE_BOOLEAN };
 
 	}
 
@@ -515,17 +515,15 @@ public final class TweetStore {
 
 		public static final String IN_REPLY_TO_STATUS_ID = "in_reply_to_status_id";
 
-		public static final String IS_IMAGE_ATTACHED = "is_image_attached";
-
-		public static final String IS_PHOTO_ATTACHED = "is_photo_attached";
+		public static final String ATTACHED_IMAGE_TYPE = "attached_image_type";
 
 		public static final String IS_POSSIBLY_SENSITIVE = "is_possibly_sensitive";
 
 		public static final String[] COLUMNS = new String[] { _ID, TEXT, ACCOUNT_IDS, LOCATION, IMAGE_URI,
-				IN_REPLY_TO_STATUS_ID, IS_IMAGE_ATTACHED, IS_PHOTO_ATTACHED, IS_POSSIBLY_SENSITIVE };
+				IN_REPLY_TO_STATUS_ID, ATTACHED_IMAGE_TYPE, IS_POSSIBLY_SENSITIVE };
 
 		public static final String[] TYPES = new String[] { TYPE_PRIMARY_KEY, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT,
-				TYPE_TEXT, TYPE_INT, TYPE_BOOLEAN, TYPE_BOOLEAN, TYPE_BOOLEAN };
+				TYPE_TEXT, TYPE_INT, TYPE_INT, TYPE_BOOLEAN };
 
 	}
 
@@ -573,6 +571,23 @@ public final class TweetStore {
 
 		public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
 
+	}
+
+	public static interface Notifications extends BaseColumns {
+
+		public static final String TABLE_NAME = "notifications";
+
+		public static final String CONTENT_PATH = TABLE_NAME;
+
+		public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
+
+		public static final String ID = "id";
+
+		public static final String COUNT = "count";
+
+		public static final String[] MATRIX_COLUMNS = new String[] { ID, COUNT };
+
+		public static final String[] COLUMNS = new String[] { _ID, ID, COUNT };
 	}
 
 	public static interface Permissions extends BaseColumns {

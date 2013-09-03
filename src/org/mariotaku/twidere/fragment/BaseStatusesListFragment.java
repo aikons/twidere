@@ -22,6 +22,7 @@ package org.mariotaku.twidere.fragment;
 import static org.mariotaku.twidere.util.Utils.cancelRetweet;
 import static org.mariotaku.twidere.util.Utils.getAccountScreenName;
 import static org.mariotaku.twidere.util.Utils.getActivatedAccountIds;
+import static org.mariotaku.twidere.util.Utils.getDefaultTextSize;
 import static org.mariotaku.twidere.util.Utils.getThemeColor;
 import static org.mariotaku.twidere.util.Utils.isMyRetweet;
 import static org.mariotaku.twidere.util.Utils.openStatus;
@@ -52,7 +53,6 @@ import android.os.Handler;
 import android.os.SystemClock;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.Loader;
-import android.text.Html;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -215,7 +215,7 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 
 	@Override
 	public final void onLoadFinished(final Loader<Data> loader, final Data data) {
-		mData = data;
+		setData(data);
 		final int first_visible_position = mListView.getFirstVisiblePosition();
 		if (mListView.getChildCount() > 0) {
 			final View first_child = mListView.getChildAt(0);
@@ -263,8 +263,7 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 				break;
 			}
 			case MENU_COPY: {
-				final CharSequence text = Html.fromHtml(status.text_html);
-				if (ClipboardUtils.setText(getActivity(), text)) {
+				if (ClipboardUtils.setText(getActivity(), status.text_plain)) {
 					showOkMessage(getActivity(), R.string.text_copied, false);
 				}
 				break;
@@ -339,7 +338,7 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 		super.onResume();
 		mLoadMoreAutomatically = mPreferences.getBoolean(PREFERENCE_KEY_LOAD_MORE_AUTOMATICALLY, false);
 		mListView.setFastScrollEnabled(mPreferences.getBoolean(PREFERENCE_KEY_FAST_SCROLL_THUMB, false));
-		final float text_size = mPreferences.getInt(PREFERENCE_KEY_TEXT_SIZE, PREFERENCE_DEFAULT_TEXT_SIZE);
+		final float text_size = mPreferences.getInt(PREFERENCE_KEY_TEXT_SIZE, getDefaultTextSize(getActivity()));
 		final boolean display_profile_image = mPreferences.getBoolean(PREFERENCE_KEY_DISPLAY_PROFILE_IMAGE, true);
 		final String image_preview_display_option = mPreferences.getString(PREFERENCE_KEY_IMAGE_PREVIEW_DISPLAY_OPTION,
 				IMAGE_PREVIEW_DISPLAY_OPTION_NONE);

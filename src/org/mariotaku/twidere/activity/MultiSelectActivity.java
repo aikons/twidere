@@ -33,7 +33,6 @@ import org.mariotaku.twidere.app.TwidereApplication;
 import org.mariotaku.twidere.model.ParcelableStatus;
 import org.mariotaku.twidere.model.ParcelableUser;
 import org.mariotaku.twidere.provider.TweetStore.Filters;
-import org.mariotaku.twidere.util.ArrayUtils;
 import org.mariotaku.twidere.util.AsyncTwitterWrapper;
 import org.mariotaku.twidere.util.MultiSelectManager;
 import org.mariotaku.twidere.util.NoDuplicatesArrayList;
@@ -131,8 +130,8 @@ public class MultiSelectActivity extends DualPaneActivity implements ActionMode.
 				break;
 			}
 			case MENU_BLOCK: {
-				final long account_id = getFirstSelectAccountId(selected_items);
-				final long[] user_ids = getSelectedUserIds(selected_items);
+				final long account_id = MultiSelectManager.getFirstSelectAccountId(selected_items);
+				final long[] user_ids = MultiSelectManager.getSelectedUserIds(selected_items);
 				if (account_id > 0 && user_ids != null) {
 					mTwitterWrapper.createMultiBlock(account_id, user_ids);
 				}
@@ -140,8 +139,8 @@ public class MultiSelectActivity extends DualPaneActivity implements ActionMode.
 				break;
 			}
 			case MENU_REPORT_SPAM: {
-				final long account_id = getFirstSelectAccountId(selected_items);
-				final long[] user_ids = getSelectedUserIds(selected_items);
+				final long account_id = MultiSelectManager.getFirstSelectAccountId(selected_items);
+				final long[] user_ids = MultiSelectManager.getSelectedUserIds(selected_items);
 				if (account_id > 0 && user_ids != null) {
 					mTwitterWrapper.reportMultiSpam(account_id, user_ids);
 				}
@@ -221,26 +220,6 @@ public class MultiSelectActivity extends DualPaneActivity implements ActionMode.
 				mActionMode = null;
 			}
 		}
-	}
-
-	private static long getFirstSelectAccountId(final List<Object> selected_items) {
-		final Object obj = selected_items.get(0);
-		if (obj instanceof ParcelableUser)
-			return ((ParcelableUser) obj).account_id;
-		else if (obj instanceof ParcelableStatus) return ((ParcelableStatus) obj).account_id;
-		return -1;
-	}
-
-	private static long[] getSelectedUserIds(final List<Object> selected_items) {
-		final ArrayList<Long> ids_list = new ArrayList<Long>();
-		for (final Object item : selected_items) {
-			if (item instanceof ParcelableUser) {
-				ids_list.add(((ParcelableUser) item).id);
-			} else if (item instanceof ParcelableStatus) {
-				ids_list.add(((ParcelableStatus) item).user_id);
-			}
-		}
-		return ArrayUtils.fromList(ids_list);
 	}
 
 }
