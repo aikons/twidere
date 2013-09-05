@@ -22,12 +22,14 @@ package org.mariotaku.twidere.fragment;
 import static org.mariotaku.twidere.util.Utils.scrollListToTop;
 
 import org.mariotaku.twidere.Constants;
-import org.mariotaku.twidere.activity.BaseActivity;
 import org.mariotaku.twidere.app.TwidereApplication;
+import org.mariotaku.twidere.fragment.iface.FragmentCallback;
 import org.mariotaku.twidere.util.AsyncTwitterWrapper;
 import org.mariotaku.twidere.util.MultiSelectManager;
+import org.mariotaku.twidere.util.Utils;
 
 import android.app.Activity;
+import android.app.ListFragment;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -35,16 +37,19 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.ListFragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
+import android.widget.AbsListView.OnScrollListener;
+import android.widget.ListView;
 
-public class BaseListFragment extends ListFragment implements Constants {
+public class BaseListFragment extends ListFragment implements Constants, OnScrollListener {
 
 	private boolean mActivityFirstCreated;
 	private boolean mIsInstanceStateSaved;
+
+	private boolean mReachedBottom, mNotReachedBottomBefore = true;
 
 	private final BroadcastReceiver mStateReceiver = new BroadcastReceiver() {
 
@@ -94,13 +99,9 @@ public class BaseListFragment extends ListFragment implements Constants {
 	}
 
 	public void invalidateOptionsMenu() {
-		final FragmentActivity activity = getActivity();
+		final Activity activity = getActivity();
 		if (activity == null) return;
-		if (activity instanceof BaseActivity) {
-			((BaseActivity) activity).invalidateOptionsMenu();
-		} else {
-			activity.supportInvalidateOptionsMenu();
-		}
+		activity.invalidateOptionsMenu();
 	}
 
 	public boolean isActivityFirstCreated() {
@@ -111,10 +112,21 @@ public class BaseListFragment extends ListFragment implements Constants {
 		return mIsInstanceStateSaved;
 	}
 
+	public boolean isReachedBottom() {
+		return mReachedBottom;
+	}
+
 	@Override
 	public void onActivityCreated(final Bundle savedInstanceState) {
 		super.onActivityCreated(savedInstanceState);
 		mIsInstanceStateSaved = savedInstanceState != null;
+		final ListView lv = getListView();
+		lv.setOnScrollListener(this);
+	}
+
+	@Override
+	public void onAttach(final Activity activity) {
+		super.onAttach(activity);
 	}
 
 	@Override
@@ -135,6 +147,30 @@ public class BaseListFragment extends ListFragment implements Constants {
 	}
 
 	public void onPostStart() {
+	}
+
+	@Override
+	public void onScroll(final AbsListView view, final int firstVisibleItem, final int visibleItemCount,
+			final int totalItemCount) {
+		final boolean reached = firstVisibleItem + visibleItemCount >= totalItemCount
+				&& totalItemCount >= visibleItemCount;
+
+		if (mReachedBottom != reached) {
+			mReachedBottom = reached;
+			if (mReachedBottom && mNotReachedBottomBefore) {
+				mNotReachedBottomBefore = false;
+				return;
+			}
+			if (mReachedBottom && getListAdapter().getCount() > visibleItemCount) {
+				onReachedBottom();
+			}
+		}
+
+	}
+
+	@Override
+	public void onScrollStateChanged(final AbsListView view, final int scrollState) {
+
 	}
 
 	@Override
@@ -164,9 +200,27 @@ public class BaseListFragment extends ListFragment implements Constants {
 		activity.setProgressBarIndeterminateVisibility(visible);
 	}
 
+	@Override
+	public void setSelection(final int position) {
+		Utils.scrollListToPosition(getListView(), position);
+	}
+
+	@Override
+	public void setUserVisibleHint(final boolean isVisibleToUser) {
+		super.setUserVisibleHint(isVisibleToUser);
+		final Activity activity = getActivity();
+		if (activity instanceof FragmentCallback) {
+			((FragmentCallback) activity).onSetUserVisibleHint(this, isVisibleToUser);
+		}
+	}
+
 	public void unregisterReceiver(final BroadcastReceiver receiver) {
 		final Activity activity = getActivity();
 		if (activity == null) return;
 		activity.unregisterReceiver(receiver);
+	}
+
+	protected void onReachedBottom() {
+
 	}
 }
