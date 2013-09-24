@@ -24,7 +24,6 @@ import static org.mariotaku.twidere.util.Utils.getActivatedAccountIds;
 import static org.mariotaku.twidere.util.Utils.getDefaultTextSize;
 import static org.mariotaku.twidere.util.Utils.openUserProfile;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -32,11 +31,13 @@ import org.mariotaku.popupmenu.PopupMenu;
 import org.mariotaku.popupmenu.PopupMenu.OnMenuItemClickListener;
 import org.mariotaku.twidere.R;
 import org.mariotaku.twidere.adapter.ParcelableUsersAdapter;
+import org.mariotaku.twidere.adapter.iface.IBaseAdapter.MenuButtonClickListener;
 import org.mariotaku.twidere.loader.DummyParcelableUsersLoader;
 import org.mariotaku.twidere.model.Panes;
 import org.mariotaku.twidere.model.ParcelableUser;
 import org.mariotaku.twidere.util.MultiSelectManager;
 import org.mariotaku.twidere.util.NoDuplicatesArrayList;
+import org.mariotaku.twidere.util.Utils;
 
 import android.content.ActivityNotFoundException;
 import android.content.Context;
@@ -52,14 +53,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AbsListView;
-import android.widget.AbsListView.OnScrollListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ListView;
 
 abstract class BaseUsersListFragment extends BasePullToRefreshListFragment implements
-		LoaderCallbacks<List<ParcelableUser>>, OnScrollListener, OnItemLongClickListener, Panes.Left,
-		OnMenuItemClickListener, MultiSelectManager.Callback {
+		LoaderCallbacks<List<ParcelableUser>>, OnItemLongClickListener, Panes.Left, OnMenuItemClickListener,
+		MultiSelectManager.Callback, MenuButtonClickListener {
 
 	private static final long TICKER_DURATION = 5000L;
 
@@ -117,6 +117,7 @@ abstract class BaseUsersListFragment extends BasePullToRefreshListFragment imple
 		super.onActivityCreated(savedInstanceState);
 		mPreferences = getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
 		mAdapter = new ParcelableUsersAdapter(getActivity());
+		mAdapter.setMenuButtonClickListener(this);
 		mMultiSelectManager = getMultiSelectManager();
 		mListView = getListView();
 		mListView.setFastScrollEnabled(mPreferences.getBoolean(PREFERENCE_KEY_FAST_SCROLL_THUMB, false));
@@ -127,9 +128,8 @@ abstract class BaseUsersListFragment extends BasePullToRefreshListFragment imple
 			mData.clear();
 		}
 		mAccountId = account_id;
+		mListView.setDivider(null);
 		mListView.setOnItemLongClickListener(this);
-		mListView.setOnScrollListener(this);
-		// setEnabled("from_end");
 		setListAdapter(mAdapter);
 		getLoaderManager().initLoader(0, getArguments(), this);
 		setListShown(false);
@@ -144,45 +144,31 @@ abstract class BaseUsersListFragment extends BasePullToRefreshListFragment imple
 
 	@Override
 	public boolean onItemLongClick(final AdapterView<?> parent, final View view, final int position, final long id) {
-		mSelectedUser = null;
 		final ParcelableUsersAdapter adapter = getListAdapter();
-		mSelectedUser = adapter.findItem(id);
-		if (mMultiSelectManager.isActive()) {
-			if (!mMultiSelectManager.isSelected(mSelectedUser)) {
-				mMultiSelectManager.selectItem(mSelectedUser);
-			} else {
-				mMultiSelectManager.unselectItem(mSelectedUser);
-			}
-			return true;
-		}
-		mPopupMenu = PopupMenu.getInstance(getActivity(), view);
-		mPopupMenu.inflate(R.menu.action_user);
-		final Menu menu = mPopupMenu.getMenu();
-		final Intent extensions_intent = new Intent(INTENT_ACTION_EXTENSION_OPEN_USER);
-		final Bundle extensions_extras = new Bundle();
-		extensions_extras.putParcelable(INTENT_KEY_USER, mSelectedUser);
-		extensions_intent.putExtras(extensions_extras);
-		addIntentToMenu(getActivity(), menu, extensions_intent);
-		mPopupMenu.setOnMenuItemClickListener(this);
-		mPopupMenu.show();
+		final ParcelableUser user = adapter.findItem(id);
+		if (user == null) return false;
+		setItemSelected(user, position, !mMultiSelectManager.isSelected(user));
 		return true;
 	}
 
 	@Override
 	public void onItemsCleared() {
-		mAdapter.setMultiSelectEnabled(false);
-		mAdapter.notifyDataSetChanged();
+		mListView.clearChoices();
+		mListView.setChoiceMode(ListView.CHOICE_MODE_NONE);
+		// Workaround for Android bug
+		// http://stackoverflow.com/questions/9754170/listview-selection-remains-persistent-after-exiting-choice-mode
+		final int position = mListView.getFirstVisiblePosition(), offset = Utils.getFirstChildOffset(mListView);
+		mListView.setAdapter(mAdapter);
+		Utils.scrollListToPosition(mListView, position, offset);
 	}
 
 	@Override
 	public void onItemSelected(final Object item) {
-		mAdapter.setMultiSelectEnabled(true);
-		mAdapter.notifyDataSetChanged();
+		mListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
 	}
 
 	@Override
 	public void onItemUnselected(final Object item) {
-		mAdapter.notifyDataSetChanged();
 	}
 
 	@Override
@@ -190,11 +176,7 @@ abstract class BaseUsersListFragment extends BasePullToRefreshListFragment imple
 		final ParcelableUser user = mAdapter.findItem(id);
 		if (user == null) return;
 		if (mMultiSelectManager.isActive()) {
-			if (!mMultiSelectManager.isSelected(user)) {
-				mMultiSelectManager.selectItem(user);
-			} else {
-				mMultiSelectManager.unselectItem(user);
-			}
+			setItemSelected(user, position, !mMultiSelectManager.isSelected(user));
 			return;
 		}
 		openUserProfile(getActivity(), user);
@@ -215,16 +197,19 @@ abstract class BaseUsersListFragment extends BasePullToRefreshListFragment imple
 	}
 
 	@Override
+	public void onMenuButtonClick(final View button, final int position, final long id) {
+		final ParcelableUser user = mAdapter.findItem(id);
+		if (user == null) return;
+		showMenu(button, user);
+	}
+
+	@Override
 	public boolean onMenuItemClick(final MenuItem item) {
 		if (mSelectedUser == null) return false;
 		final ParcelableUser user = mSelectedUser;
 		switch (item.getItemId()) {
 			case MENU_VIEW_PROFILE: {
 				openUserProfile(getActivity(), user);
-				break;
-			}
-			case MENU_MULTI_SELECT: {
-				mMultiSelectManager.selectItem(user);
 				break;
 			}
 			default: {
@@ -262,7 +247,6 @@ abstract class BaseUsersListFragment extends BasePullToRefreshListFragment imple
 		final boolean display_profile_image = mPreferences.getBoolean(PREFERENCE_KEY_DISPLAY_PROFILE_IMAGE, true);
 		final String name_display_option = mPreferences.getString(PREFERENCE_KEY_NAME_DISPLAY_OPTION,
 				NAME_DISPLAY_OPTION_BOTH);
-		mAdapter.setMultiSelectEnabled(mMultiSelectManager.isActive());
 		mAdapter.setDisplayProfileImage(display_profile_image);
 		mAdapter.setTextSize(text_size);
 		mAdapter.setNameDisplayOption(name_display_option);
@@ -324,11 +308,31 @@ abstract class BaseUsersListFragment extends BasePullToRefreshListFragment imple
 
 	protected final void removeUsers(final long... user_ids) {
 		if (user_ids == null || user_ids.length == 0) return;
-		final ArrayList<ParcelableUser> items_to_remove = new ArrayList<ParcelableUser>();
 		for (final long user_id : user_ids) {
-			items_to_remove.add(mAdapter.findItem(user_id));
+			mData.remove(mAdapter.findItem(user_id));
 		}
-		mData.removeAll(items_to_remove);
 		mAdapter.setData(mData, true);
+	}
+
+	protected void setItemSelected(final ParcelableUser user, final int position, final boolean selected) {
+		if (selected) {
+			mMultiSelectManager.selectItem(user);
+		} else {
+			mMultiSelectManager.unselectItem(user);
+		}
+		mListView.setItemChecked(position, selected);
+	}
+
+	private void showMenu(final View view, final ParcelableUser user) {
+		mPopupMenu = PopupMenu.getInstance(getActivity(), view);
+		mPopupMenu.inflate(R.menu.action_user);
+		final Menu menu = mPopupMenu.getMenu();
+		final Intent extensions_intent = new Intent(INTENT_ACTION_EXTENSION_OPEN_USER);
+		final Bundle extensions_extras = new Bundle();
+		extensions_extras.putParcelable(INTENT_KEY_USER, user);
+		extensions_intent.putExtras(extensions_extras);
+		addIntentToMenu(getActivity(), menu, extensions_intent);
+		mPopupMenu.setOnMenuItemClickListener(this);
+		mPopupMenu.show();
 	}
 }

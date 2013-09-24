@@ -25,7 +25,7 @@ import static org.mariotaku.twidere.util.Utils.getAccountColor;
 import static org.mariotaku.twidere.util.Utils.getLocalizedNumber;
 import static org.mariotaku.twidere.util.Utils.getNameDisplayOptionInt;
 import static org.mariotaku.twidere.util.Utils.getTwitterInstance;
-import static org.mariotaku.twidere.util.Utils.isMyActivatedAccount;
+import static org.mariotaku.twidere.util.Utils.isMyAccount;
 import static org.mariotaku.twidere.util.Utils.openUserListMembers;
 import static org.mariotaku.twidere.util.Utils.openUserListSubscribers;
 import static org.mariotaku.twidere.util.Utils.openUserListTimeline;
@@ -36,8 +36,8 @@ import java.util.Locale;
 import org.mariotaku.popupmenu.PopupMenu;
 import org.mariotaku.popupmenu.PopupMenu.OnMenuItemClickListener;
 import org.mariotaku.twidere.R;
-import org.mariotaku.twidere.adapter.AutoCompleteAdapter;
 import org.mariotaku.twidere.adapter.ListActionAdapter;
+import org.mariotaku.twidere.adapter.UserHashtagAutoCompleteAdapter;
 import org.mariotaku.twidere.model.ListAction;
 import org.mariotaku.twidere.model.Panes;
 import org.mariotaku.twidere.model.ParcelableUserList;
@@ -133,17 +133,16 @@ public class UserListDetailsFragment extends BaseSupportListFragment implements 
 	public void changeUserList(final ParcelableUserList list) {
 		if (list == null || getActivity() == null) return;
 		getLoaderManager().destroyLoader(0);
-		final boolean is_my_activated_account = isMyActivatedAccount(getActivity(), list.user_id);
+		final boolean is_myself = list.account_id == list.user_id;
 		mErrorRetryContainer.setVisibility(View.GONE);
 		mUserList = list;
-		mProfileContainer.drawRight(getAccountColor(getActivity(), list.account_id));
+		mProfileContainer.drawEnd(getAccountColor(getActivity(), list.account_id));
 		mListNameView.setText(list.name);
 		final boolean display_screen_name = getNameDisplayOptionInt(getActivity()) == NAME_DISPLAY_OPTION_CODE_SCREEN_NAME;
 		final String name = display_screen_name ? "@" + list.user_screen_name : list.user_name;
 		mCreatedByView.setText(getString(R.string.created_by, name));
 		final String description = list.description;
-		mDescriptionContainer
-				.setVisibility(is_my_activated_account || !isEmpty(description) ? View.VISIBLE : View.GONE);
+		mDescriptionContainer.setVisibility(is_myself || !isEmpty(description) ? View.VISIBLE : View.GONE);
 		mDescriptionContainer.setOnLongClickListener(this);
 		mDescriptionView.setText(description);
 		final TwidereLinkify linkify = new TwidereLinkify(new OnLinkClickHandler(getActivity()));
@@ -163,7 +162,7 @@ public class UserListDetailsFragment extends BaseSupportListFragment implements 
 	public void getUserListInfo(final boolean init, final long account_id, final int list_id, final String list_name,
 			final long user_id, final String screen_name) {
 		getLoaderManager().destroyLoader(0);
-		if (!isMyActivatedAccount(getActivity(), account_id)) {
+		if (!isMyAccount(getActivity(), account_id)) {
 			mListContainer.setVisibility(View.GONE);
 			mErrorRetryContainer.setVisibility(View.GONE);
 			return;
@@ -428,7 +427,7 @@ public class UserListDetailsFragment extends BaseSupportListFragment implements 
 		private long mAccountId;
 		private AsyncTwitterWrapper mTwitterWrapper;
 		private int mListId;
-		private AutoCompleteAdapter mUserAutoCompleteAdapter;
+		private UserHashtagAutoCompleteAdapter mUserAutoCompleteAdapter;
 
 		@Override
 		public void onClick(final DialogInterface dialog, final int which) {
@@ -451,14 +450,13 @@ public class UserListDetailsFragment extends BaseSupportListFragment implements 
 			mListId = bundle != null ? bundle.getInt(INTENT_KEY_LIST_ID, -1) : -1;
 			mText = bundle != null ? bundle.getString(INTENT_KEY_TEXT) : null;
 			final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-			final View view = LayoutInflater.from(getActivity()).inflate(R.layout.auto_complete_textview_default_style,
-					null);
+			final View view = LayoutInflater.from(getActivity()).inflate(R.layout.auto_complete_textview, null);
 			builder.setView(view);
 			mEditText = (AutoCompleteTextView) view.findViewById(R.id.edit_text);
 			if (mText != null) {
 				mEditText.setText(mText);
 			}
-			mUserAutoCompleteAdapter = new AutoCompleteAdapter(getActivity());
+			mUserAutoCompleteAdapter = new UserHashtagAutoCompleteAdapter(getActivity());
 			mEditText.setAdapter(mUserAutoCompleteAdapter);
 			mEditText.setThreshold(1);
 			mEditText.setFilters(new InputFilter[] { new InputFilter.LengthFilter(20) });

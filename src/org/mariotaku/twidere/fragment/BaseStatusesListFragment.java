@@ -20,6 +20,7 @@
 package org.mariotaku.twidere.fragment;
 
 import static org.mariotaku.twidere.util.Utils.cancelRetweet;
+import static org.mariotaku.twidere.util.Utils.clearListViewChoices;
 import static org.mariotaku.twidere.util.Utils.getAccountScreenName;
 import static org.mariotaku.twidere.util.Utils.getActivatedAccountIds;
 import static org.mariotaku.twidere.util.Utils.getDefaultTextSize;
@@ -31,6 +32,7 @@ import static org.mariotaku.twidere.util.Utils.showOkMessage;
 import org.mariotaku.popupmenu.PopupMenu;
 import org.mariotaku.popupmenu.PopupMenu.OnMenuItemClickListener;
 import org.mariotaku.twidere.R;
+import org.mariotaku.twidere.adapter.iface.IBaseAdapter.MenuButtonClickListener;
 import org.mariotaku.twidere.adapter.iface.IStatusesAdapter;
 import org.mariotaku.twidere.model.Panes;
 import org.mariotaku.twidere.model.ParcelableStatus;
@@ -63,7 +65,8 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ListView;
 
 abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragment implements LoaderCallbacks<Data>,
-		OnItemLongClickListener, OnMenuItemClickListener, Panes.Left, MultiSelectManager.Callback {
+		OnItemLongClickListener, OnMenuItemClickListener, Panes.Left, MultiSelectManager.Callback,
+		MenuButtonClickListener {
 
 	private static final long TICKER_DURATION = 5000L;
 
@@ -126,9 +129,11 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 		mMultiSelectManager = getMultiSelectManager();
 		mListView = getListView();
 		mAdapter = newAdapterInstance();
+		mAdapter.setMenuButtonClickListener(this);
 		setListAdapter(null);
 		setListHeaderFooters(mListView);
 		setListAdapter(mAdapter);
+		mListView.setDivider(null);
 		mListView.setOnItemLongClickListener(this);
 		setListShown(false);
 		getLoaderManager().initLoader(0, getArguments(), this);
@@ -139,23 +144,12 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 
 	@Override
 	public boolean onItemLongClick(final AdapterView<?> parent, final View view, final int position, final long id) {
-		mSelectedStatus = null;
 		final Object tag = view.getTag();
 		if (tag instanceof StatusViewHolder) {
-			final boolean click_to_open_menu = mPreferences.getBoolean(PREFERENCE_KEY_CLICK_TO_OPEN_MENU, false);
 			final StatusViewHolder holder = (StatusViewHolder) tag;
 			if (holder.show_as_gap) return false;
-			final ParcelableStatus status = mSelectedStatus = mAdapter.getStatus(position
-					- mListView.getHeaderViewsCount());
-			if (mMultiSelectManager.isActive() || click_to_open_menu) {
-				if (!mMultiSelectManager.isSelected(status)) {
-					mMultiSelectManager.selectItem(status);
-				} else {
-					mMultiSelectManager.unselectItem(mSelectedStatus);
-				}
-				return true;
-			}
-			openMenu(view, status);
+			final ParcelableStatus status = mAdapter.getStatus(position - mListView.getHeaderViewsCount());
+			setItemSelected(status, position, !mMultiSelectManager.isSelected(status));
 			return true;
 		}
 		return false;
@@ -163,46 +157,34 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 
 	@Override
 	public void onItemsCleared() {
-		mAdapter.setMultiSelectEnabled(false);
-		mAdapter.notifyDataSetChanged();
+		clearListViewChoices(mListView);
 	}
 
 	@Override
 	public void onItemSelected(final Object item) {
-		mAdapter.setMultiSelectEnabled(true);
-		mAdapter.notifyDataSetChanged();
+		mListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
 	}
 
 	@Override
 	public void onItemUnselected(final Object item) {
-		mAdapter.notifyDataSetChanged();
 	}
 
 	@Override
 	public void onListItemClick(final ListView l, final View v, final int position, final long id) {
-		mSelectedStatus = null;
 		final Object tag = v.getTag();
 		if (tag instanceof StatusViewHolder) {
-			final boolean click_to_open_menu = mPreferences.getBoolean(PREFERENCE_KEY_CLICK_TO_OPEN_MENU, false);
-			final ParcelableStatus status = mSelectedStatus = mAdapter.getStatus(position - l.getHeaderViewsCount());
+			final ParcelableStatus status = mAdapter.getStatus(position - l.getHeaderViewsCount());
 			if (status == null) return;
 			final StatusViewHolder holder = (StatusViewHolder) tag;
 			if (holder.show_as_gap) {
 				getStatuses(new long[] { status.account_id }, new long[] { status.id }, null);
+				mListView.setItemChecked(position, false);
 			} else {
 				if (mMultiSelectManager.isActive()) {
-					if (!mMultiSelectManager.isSelected(status)) {
-						mMultiSelectManager.selectItem(status);
-					} else {
-						mMultiSelectManager.unselectItem(status);
-					}
+					setItemSelected(status, position, !mMultiSelectManager.isSelected(status));
 					return;
 				}
-				if (click_to_open_menu) {
-					openMenu(v, status);
-				} else {
-					openStatus(getActivity(), status);
-				}
+				openStatus(getActivity(), status);
 			}
 		}
 	}
@@ -214,6 +196,7 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 
 	@Override
 	public final void onLoadFinished(final Loader<Data> loader, final Data data) {
+		if (getActivity() == null || getView() == null) return;
 		setData(data);
 		final int first_visible_position = mListView.getFirstVisiblePosition();
 		if (mListView.getChildCount() > 0) {
@@ -236,13 +219,25 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 		} else if ((first_visible_position > 0 || remember_position) && curr_viewed_id > 0
 				&& last_viewed_id != curr_viewed_id) {
 			status_id = last_viewed_id;
-		} else
+		} else {
+			if (first_visible_position == 0 && mAdapter.findItemIdByPosition(0) != last_viewed_id) {
+				mAdapter.setMaxAnimationPosition(mListView.getLastVisiblePosition());
+			}
 			return;
+		}
 		final int position = mAdapter.findItemPositionByStatusId(status_id);
 		if (position > -1 && position < mListView.getCount()) {
+			mAdapter.setMaxAnimationPosition(mListView.getLastVisiblePosition());
 			mListView.setSelectionFromTop(position, mListScrollOffset);
 			mListScrollOffset = 0;
 		}
+	}
+
+	@Override
+	public void onMenuButtonClick(final View button, final int position, final long id) {
+		final ParcelableStatus status = mAdapter.getStatus(position - mListView.getHeaderViewsCount());
+		if (status == null) return;
+		openMenu(button, status);
 	}
 
 	@Override
@@ -310,10 +305,6 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 				getStatuses(new long[] { status.account_id }, new long[] { status.id }, null);
 				break;
 			}
-			case MENU_MULTI_SELECT: {
-				mMultiSelectManager.selectItem(status);
-				break;
-			}
 			default: {
 				if (item.getIntent() != null) {
 					try {
@@ -336,8 +327,7 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 		mListView.setFastScrollEnabled(mPreferences.getBoolean(PREFERENCE_KEY_FAST_SCROLL_THUMB, false));
 		final float text_size = mPreferences.getInt(PREFERENCE_KEY_TEXT_SIZE, getDefaultTextSize(getActivity()));
 		final boolean display_profile_image = mPreferences.getBoolean(PREFERENCE_KEY_DISPLAY_PROFILE_IMAGE, true);
-		final String image_preview_display_option = mPreferences.getString(PREFERENCE_KEY_IMAGE_PREVIEW_DISPLAY_OPTION,
-				IMAGE_PREVIEW_DISPLAY_OPTION_NONE);
+		final boolean display_image_preview = mPreferences.getBoolean(PREFERENCE_KEY_DISPLAY_IMAGE_PREVIEW, false);
 		final boolean show_absolute_time = mPreferences.getBoolean(PREFERENCE_KEY_SHOW_ABSOLUTE_TIME, false);
 		final boolean display_sensitive_contents = mPreferences.getBoolean(PREFERENCE_KEY_DISPLAY_SENSITIVE_CONTENTS,
 				false);
@@ -346,12 +336,11 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 		final String name_display_option = mPreferences.getString(PREFERENCE_KEY_NAME_DISPLAY_OPTION,
 				NAME_DISPLAY_OPTION_BOTH);
 		final boolean link_underline_only = mPreferences.getBoolean(PREFERENCE_KEY_LINK_UNDERLINE_ONLY, false);
-		mAdapter.setMultiSelectEnabled(mMultiSelectManager.isActive());
 		mAdapter.setDisplayProfileImage(display_profile_image);
 		mAdapter.setTextSize(text_size);
 		mAdapter.setShowAbsoluteTime(show_absolute_time);
 		mAdapter.setNameDisplayOption(name_display_option);
-		mAdapter.setImagePreviewDisplayOption(image_preview_display_option);
+		mAdapter.setDisplayImagePreview(display_image_preview);
 		mAdapter.setDisplaySensitiveContents(display_sensitive_contents);
 		mAdapter.setLinkHightlightingEnabled(link_highlighting);
 		mAdapter.setIndicateMyStatusDisabled(isMyTimeline() || !indicate_my_status);
@@ -443,6 +432,17 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 		mData = data;
 	}
 
+	protected void setItemSelected(final ParcelableStatus status, final int position, final boolean selected) {
+		if (selected) {
+			mMultiSelectManager.selectItem(status);
+		} else {
+			mMultiSelectManager.unselectItem(status);
+		}
+		if (position >= 0) {
+			mListView.setItemChecked(position, selected);
+		}
+	}
+
 	protected void setListHeaderFooters(final ListView list) {
 
 	}
@@ -460,18 +460,17 @@ abstract class BaseStatusesListFragment<Data> extends BasePullToRefreshListFragm
 	}
 
 	private void openMenu(final View view, final ParcelableStatus status) {
+		mSelectedStatus = status;
 		if (view == null || status == null) return;
+		if (mPopupMenu != null && mPopupMenu.isShowing()) {
+			mPopupMenu.dismiss();
+		}
 		final int activated_color = ThemeUtils.getThemeColor(getActivity());
 		mPopupMenu = PopupMenu.getInstance(getActivity(), view);
 		mPopupMenu.inflate(R.menu.action_status);
-		final boolean click_to_open_menu = mPreferences.getBoolean(PREFERENCE_KEY_CLICK_TO_OPEN_MENU, false);
 		final boolean separate_retweet_action = mPreferences.getBoolean(PREFERENCE_KEY_SEPARATE_RETWEET_ACTION, false);
 		final Menu menu = mPopupMenu.getMenu();
 		setMenuForStatus(getActivity(), menu, status);
-		final MenuItem view_status = menu.findItem(MENU_VIEW);
-		if (view_status != null) {
-			view_status.setVisible(click_to_open_menu);
-		}
 		final MenuItem retweet_submenu = menu.findItem(R.id.retweet_submenu);
 		if (retweet_submenu != null) {
 			retweet_submenu.setVisible(!separate_retweet_action);

@@ -25,7 +25,6 @@ import static org.mariotaku.twidere.util.Utils.findStatusInDatabases;
 import static org.mariotaku.twidere.util.Utils.formatSameDayTime;
 import static org.mariotaku.twidere.util.Utils.getAccountColor;
 import static org.mariotaku.twidere.util.Utils.getAccountScreenName;
-import static org.mariotaku.twidere.util.Utils.getImagePreviewDisplayOptionInt;
 import static org.mariotaku.twidere.util.Utils.getNameDisplayOptionInt;
 import static org.mariotaku.twidere.util.Utils.getStatusBackground;
 import static org.mariotaku.twidere.util.Utils.getUserColor;
@@ -75,12 +74,16 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 	private final SQLiteDatabase mDatabase;
 	private final Map<View, String> mLoadingViewsMap = new HashMap<View, String>();
 
-	private boolean mDisplayProfileImage, mShowAccountColor, mShowAbsoluteTime, mGapDisallowed, mMultiSelectEnabled,
+	private MenuButtonClickListener mListener;
+
+	private boolean mDisplayProfileImage, mDisplayImagePreview, mShowAccountColor, mShowAbsoluteTime, mGapDisallowed,
 			mMentionsHighlightDisabled, mDisplaySensitiveContents, mIndicateMyStatusDisabled, mLinkHighlightingEnabled,
 			mIsLastItemFiltered, mFiltersEnabled = true;
 	private float mTextSize;
-	private int mNameDisplayOption, mImagePreviewDisplayOption, mLinkHighlightStyle;
+	private int mNameDisplayOption, mLinkHighlightStyle;
 	private boolean mFilterIgnoreSource, mFilterIgnoreScreenName, mFilterIgnoreTextHtml, mFilterIgnoreTextPlain;
+
+	private int mMaxAnimationPosition;
 
 	private StatusCursorIndices mIndices;
 
@@ -93,6 +96,7 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 		mDatabase = application.getSQLiteDatabase();
 		mLinkify = new TwidereLinkify(new OnLinkClickHandler(mContext));
 		configBaseAdapter(context, this);
+		setMaxAnimationPosition(-1);
 	}
 
 	@Override
@@ -114,7 +118,6 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 
 			final long account_id = cursor.getLong(mIndices.account_id);
 			final long user_id = cursor.getLong(mIndices.user_id);
-			final long status_id = cursor.getLong(mIndices.status_id);
 			final long status_timestamp = cursor.getLong(mIndices.status_timestamp);
 			final long retweet_count = cursor.getLong(mIndices.retweet_count);
 
@@ -146,12 +149,6 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 					.toLowerCase(Locale.US).contains('@' + account_screen_name.toLowerCase(Locale.US));
 			final boolean is_my_status = account_id == user_id;
 
-			if (mMultiSelectEnabled) {
-				holder.setSelected(mMultiSelectManager.isStatusSelected(status_id));
-			} else {
-				holder.setSelected(false);
-			}
-
 			holder.setUserColor(getUserColor(mContext, user_id));
 			holder.setHighlightColor(getStatusBackground(mMentionsHighlightDisabled ? false : is_mention, is_favorite,
 					is_retweet));
@@ -168,10 +165,10 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 			if (mLinkHighlightingEnabled) {
 				holder.text.setText(Html.fromHtml(text));
 				mLinkify.applyAllLinks(holder.text, account_id, is_possibly_sensitive);
+				holder.text.setMovementMethod(null);
 			} else {
 				holder.text.setText(text);
 			}
-			holder.text.setMovementMethod(null);
 			holder.setUserType(is_verified, is_protected);
 			holder.setNameDisplayOption(mNameDisplayOption);
 			holder.setName(name, screen_name);
@@ -205,19 +202,20 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 				holder.profile_image.setVisibility(View.GONE);
 				holder.my_profile_image.setVisibility(View.GONE);
 			}
-			final boolean has_preview = mImagePreviewDisplayOption != IMAGE_PREVIEW_DISPLAY_OPTION_CODE_NONE
-					&& has_media;
+			final boolean has_preview = mDisplayImagePreview && has_media;
 			holder.image_preview_container.setVisibility(has_preview ? View.VISIBLE : View.GONE);
 			if (has_preview) {
-				holder.setImagePreviewDisplayOption(mImagePreviewDisplayOption);
 				if (is_possibly_sensitive && !mDisplaySensitiveContents) {
-					holder.image_preview.setImageResource(R.drawable.image_preview_nsfw);
+					holder.image_preview.setImageDrawable(null);
+					holder.image_preview.setBackgroundResource(R.drawable.image_preview_nsfw);
 					holder.image_preview_progress.setVisibility(View.GONE);
 				} else if (!image_preview_url.equals(mLoadingViewsMap.get(holder.image_preview))) {
+					holder.image_preview.setBackgroundResource(0);
 					mImageLoader.displayPreviewImage(holder.image_preview, image_preview_url, this);
 				}
 				holder.image_preview.setTag(position);
 			}
+			holder.item_menu.setTag(position);
 		}
 	}
 
@@ -266,6 +264,18 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 	}
 
 	@Override
+	public View getView(final int position, final View convertView, final ViewGroup parent) {
+		final View view = super.getView(position, convertView, parent);
+		final Object tag = view.getTag();
+		// animate the item
+		if (tag instanceof StatusViewHolder && position > mMaxAnimationPosition) {
+			view.startAnimation(((StatusViewHolder) tag).item_animation);
+			mMaxAnimationPosition = position;
+		}
+		return view;
+	}
+
+	@Override
 	public boolean isLastItemFiltered() {
 		return mFiltersEnabled && mIsLastItemFiltered;
 	}
@@ -279,6 +289,7 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 			holder.profile_image.setOnClickListener(this);
 			holder.my_profile_image.setOnClickListener(this);
 			holder.image_preview.setOnClickListener(this);
+			holder.item_menu.setOnClickListener(this);
 			view.setTag(holder);
 		}
 		return view;
@@ -286,13 +297,15 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 
 	@Override
 	public void onClick(final View view) {
-		if (mMultiSelectEnabled) return;
+		if (mMultiSelectManager.isActive()) return;
 		final Object tag = view.getTag();
-		final ParcelableStatus status = tag instanceof Integer ? getStatus((Integer) tag) : null;
-		if (status == null) return;
+		final int position = tag instanceof Integer ? (Integer) tag : -1;
+		if (position == -1) return;
 		switch (view.getId()) {
 			case R.id.image_preview: {
-				final PreviewImage spec = PreviewImage.getAllAvailableImage(status.image_original_url, true);
+				final ParcelableStatus status = getStatus(position);
+				if (status == null) return;
+				final PreviewImage spec = PreviewImage.getAllAvailableImage(status.image_original_url);
 				if (spec != null) {
 					openImage(mContext, spec.image_full_url, spec.image_original_url, status.is_possibly_sensitive);
 				} else {
@@ -302,9 +315,16 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 			}
 			case R.id.my_profile_image:
 			case R.id.profile_image: {
+				final ParcelableStatus status = getStatus(position);
+				if (status == null) return;
 				if (mContext instanceof Activity) {
 					openUserProfile((Activity) mContext, status.account_id, status.user_id, status.user_screen_name);
 				}
+				break;
+			}
+			case R.id.item_menu: {
+				if (position == -1 || mListener == null) return;
+				mListener.onMenuButtonClick(view, position, getItemId(position));
 				break;
 			}
 		}
@@ -373,6 +393,13 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 	}
 
 	@Override
+	public void setDisplayImagePreview(final boolean display) {
+		if (display == mDisplayImagePreview) return;
+		mDisplayImagePreview = display;
+		notifyDataSetChanged();
+	}
+
+	@Override
 	public void setDisplayProfileImage(final boolean display) {
 		if (display == mDisplayProfileImage) return;
 		mDisplayProfileImage = display;
@@ -413,14 +440,6 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 	}
 
 	@Override
-	public void setImagePreviewDisplayOption(final String option) {
-		final int option_int = getImagePreviewDisplayOptionInt(option);
-		if (option_int == mImagePreviewDisplayOption) return;
-		mImagePreviewDisplayOption = option_int;
-		notifyDataSetChanged();
-	}
-
-	@Override
 	public void setIndicateMyStatusDisabled(final boolean disable) {
 		if (mIndicateMyStatusDisabled == disable) return;
 		mIndicateMyStatusDisabled = disable;
@@ -445,6 +464,11 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 	}
 
 	@Override
+	public void setMaxAnimationPosition(final int position) {
+		mMaxAnimationPosition = position;
+	}
+
+	@Override
 	public void setMentionsHightlightDisabled(final boolean disable) {
 		if (disable == mMentionsHighlightDisabled) return;
 		mMentionsHighlightDisabled = disable;
@@ -452,10 +476,8 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 	}
 
 	@Override
-	public void setMultiSelectEnabled(final boolean multi) {
-		if (mMultiSelectEnabled == multi) return;
-		mMultiSelectEnabled = multi;
-		notifyDataSetChanged();
+	public void setMenuButtonClickListener(final MenuButtonClickListener listener) {
+		mListener = listener;
 	}
 
 	@Override
@@ -511,5 +533,4 @@ public class CursorStatusesAdapter extends SimpleCursorAdapter implements IStatu
 			mIsLastItemFiltered = false;
 		}
 	}
-
 }

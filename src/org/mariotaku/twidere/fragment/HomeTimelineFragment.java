@@ -26,6 +26,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.net.Uri;
 
 public class HomeTimelineFragment extends CursorStatusesListFragment {
@@ -37,9 +38,8 @@ public class HomeTimelineFragment extends CursorStatusesListFragment {
 			if (getActivity() == null || !isAdded() || isDetached()) return;
 			final String action = intent.getAction();
 			if (BROADCAST_HOME_TIMELINE_REFRESHED.equals(action)) {
-				// setRefreshComplete();
-				// getLoaderManager().restartLoader(0, null,
-				// HomeTimelineFragment.this);
+				setRefreshComplete();
+				getLoaderManager().restartLoader(0, null, HomeTimelineFragment.this);
 			} else if (BROADCAST_HOME_TIMELINE_DATABASE_UPDATED.equals(action)) {
 				getLoaderManager().restartLoader(0, null, HomeTimelineFragment.this);
 			} else if (BROADCAST_TASK_STATE_CHANGED.equals(action)) {
@@ -88,6 +88,12 @@ public class HomeTimelineFragment extends CursorStatusesListFragment {
 	@Override
 	protected String getPositionKey() {
 		return "home_timeline";
+	}
+
+	@Override
+	protected boolean isFiltersEnabled() {
+		final SharedPreferences pref = getSharedPreferences();
+		return pref != null && pref.getBoolean(PREFERENCE_KEY_FILTERS_IN_HOME_TIMELINE, true);
 	}
 
 }

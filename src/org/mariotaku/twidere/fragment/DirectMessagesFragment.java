@@ -49,11 +49,9 @@ import android.support.v4.content.Loader;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AbsListView;
-import android.widget.AbsListView.OnScrollListener;
 import android.widget.ListView;
 
-public class DirectMessagesFragment extends BasePullToRefreshListFragment implements LoaderCallbacks<Cursor>,
-		OnScrollListener, MultiSelectManager.Callback {
+public class DirectMessagesFragment extends BasePullToRefreshListFragment implements LoaderCallbacks<Cursor> {
 
 	private static final long TICKER_DURATION = 5000L;
 
@@ -105,7 +103,6 @@ public class DirectMessagesFragment extends BasePullToRefreshListFragment implem
 		mAdapter = new DirectMessagesEntryAdapter(getActivity());
 		setListAdapter(mAdapter);
 		mListView = getListView();
-		mListView.setOnScrollListener(this);
 		getLoaderManager().initLoader(0, null, this);
 		setListShown(false);
 	}
@@ -116,21 +113,6 @@ public class DirectMessagesFragment extends BasePullToRefreshListFragment implem
 		final String where = DirectMessages.ACCOUNT_ID + " IN ("
 				+ ArrayUtils.toString(getActivatedAccountIds(getActivity()), ',', false) + ")";
 		return new CursorLoader(getActivity(), uri, null, where, null, null);
-	}
-
-	@Override
-	public void onItemsCleared() {
-		mAdapter.setMultiSelectEnabled(false);
-	}
-
-	@Override
-	public void onItemSelected(final Object item) {
-		mAdapter.setMultiSelectEnabled(true);
-	}
-
-	@Override
-	public void onItemUnselected(final Object item) {
-		mAdapter.notifyDataSetChanged();
 	}
 
 	@Override
@@ -213,8 +195,6 @@ public class DirectMessagesFragment extends BasePullToRefreshListFragment implem
 		mAdapter.setTextSize(text_size);
 		mAdapter.setShowAbsoluteTime(show_absolute_time);
 		mAdapter.setNameDisplayOption(name_display_option);
-		mAdapter.setMultiSelectEnabled(mMultiSelectManager.isActive());
-
 		mLoadMoreAutomatically = mPreferences.getBoolean(PREFERENCE_KEY_LOAD_MORE_AUTOMATICALLY, false);
 	}
 
@@ -267,13 +247,11 @@ public class DirectMessagesFragment extends BasePullToRefreshListFragment implem
 		final AsyncTwitterWrapper twitter = getTwitterWrapper();
 		setRefreshing(twitter != null
 				&& (twitter.isReceivedDirectMessagesRefreshing() || twitter.isSentDirectMessagesRefreshing()));
-		mMultiSelectManager.registerCallback(this);
 	}
 
 	@Override
 	public void onStop() {
 		unregisterReceiver(mStatusReceiver);
-		mMultiSelectManager.unregisterCallback(this);
 		mTickerStopped = true;
 		super.onStop();
 	}

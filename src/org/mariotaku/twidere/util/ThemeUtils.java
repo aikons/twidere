@@ -94,6 +94,13 @@ public class ThemeUtils implements Constants {
 		return ld;
 	}
 
+	public static int getCardListBackgroundColor(final Context context) {
+		final TypedArray a = context.obtainStyledAttributes(new int[] { R.attr.cardListBackgroundColor });
+		final int color = a.getColor(0, Color.TRANSPARENT);
+		a.recycle();
+		return color;
+	}
+
 	public static int getComposeThemeResource(final Context context) {
 		return getComposeThemeResource(getThemeName(context));
 	}
@@ -110,6 +117,15 @@ public class ThemeUtils implements Constants {
 	public static int getDialogThemeResource(final String name) {
 		final Integer res = THEMES_DIALOG.get(name);
 		return res != null ? res : R.style.Theme_Twidere_Dark_Dialog;
+	}
+
+	public static Drawable getListMenuOverflowButtonDrawable(final Context context) {
+		final TypedArray a = context.obtainStyledAttributes(new int[] { R.attr.listMenuOverflowButton });
+		final Drawable d = a.getDrawable(0);
+		a.recycle();
+		if (d == null)
+			return context.getResources().getDrawable(R.drawable.ic_list_menu_moreoverflow_normal_holo_light);
+		return d;
 	}
 
 	public static int getSwipeBackThemeResource(final Context context) {
@@ -132,7 +148,7 @@ public class ThemeUtils implements Constants {
 			case R.style.Theme_Twidere_Light_SolidBackground:
 			case R.style.Theme_Twidere_Light_SwipeBack_SolidBackground:
 			case R.style.Theme_Twidere_Light_Compose:
-				return 0xFF333333;
+				return 0xC0333333;
 		}
 		return Color.WHITE;
 	}
@@ -155,7 +171,7 @@ public class ThemeUtils implements Constants {
 	public static String getThemeName(final Context context) {
 		if (context == null) return THEME_NAME_TWIDERE;
 		final SharedPreferences pref = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-		return pref.getString(PREFERENCE_KEY_THEME, THEME_NAME_TWIDERE);
+		return pref != null ? pref.getString(PREFERENCE_KEY_THEME, THEME_NAME_TWIDERE) : THEME_NAME_TWIDERE;
 	}
 
 	public static int getThemeResource(final Context context) {
@@ -184,10 +200,26 @@ public class ThemeUtils implements Constants {
 		return false;
 	}
 
+	public static boolean isLightActionBar(final Context context) {
+		return isLightActionBar(getThemeResource(context));
+	}
+
+	public static boolean isLightActionBar(final int res) {
+		switch (res) {
+			case R.style.Theme_Twidere_Light:
+			case R.style.Theme_Twidere_Light_SwipeBack:
+			case R.style.Theme_Twidere_Light_SolidBackground:
+			case R.style.Theme_Twidere_Light_SwipeBack_SolidBackground:
+			case R.style.Theme_Twidere_Light_Compose:
+				return true;
+		}
+		return false;
+	}
+
 	public static boolean isSolidBackground(final Context context) {
 		if (context == null) return false;
 		final SharedPreferences pref = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-		return pref.getBoolean(PREFERENCE_KEY_SOLID_COLOR_BACKGROUND, false);
+		return pref != null ? pref.getBoolean(PREFERENCE_KEY_SOLID_COLOR_BACKGROUND, false) : false;
 	}
 
 	public static boolean shouldApplyColorFilter(final Context context) {
@@ -211,15 +243,7 @@ public class ThemeUtils implements Constants {
 	}
 
 	public static boolean shouldApplyColorFilterToTabIcons(final int res) {
-		switch (res) {
-			case R.style.Theme_Twidere_Light:
-			case R.style.Theme_Twidere_Light_SwipeBack:
-			case R.style.Theme_Twidere_Light_SolidBackground:
-			case R.style.Theme_Twidere_Light_SwipeBack_SolidBackground:
-			case R.style.Theme_Twidere_Light_Compose:
-				return true;
-		}
-		return false;
+		return isLightActionBar(res);
 	}
 
 }

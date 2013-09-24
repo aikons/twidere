@@ -23,17 +23,14 @@ import org.mariotaku.gallery3d.util.ApiHelper;
 import org.mariotaku.gallery3d.util.BitmapPool;
 import org.mariotaku.gallery3d.util.GalleryUtils;
 
-import android.annotation.TargetApi;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapRegionDecoder;
 import android.graphics.Canvas;
 import android.graphics.Rect;
-import android.os.Build;
 import android.util.Log;
 
-@TargetApi(Build.VERSION_CODES.GINGERBREAD_MR1)
 public class PhotoViewAdapter implements PhotoView.ITileImageAdapter {
 
 	private static final String TAG = "PhotoViewAdapter";
@@ -119,11 +116,11 @@ public class PhotoViewAdapter implements PhotoView.ITileImageAdapter {
 			}
 		} else {
 			final int s = tileSize + 2 * borderSize;
-			bitmap = Bitmap.createBitmap(s, s, Config.ARGB_8888);
+			bitmap = Bitmap.createBitmap(s, s, Config.RGB_565);
 		}
 
 		final BitmapFactory.Options options = new BitmapFactory.Options();
-		options.inPreferredConfig = Config.ARGB_8888;
+		options.inPreferredConfig = Config.RGB_565;
 		options.inPreferQualityOverSpeed = true;
 		options.inSampleSize = 1 << level;
 		options.inBitmap = bitmap;
@@ -195,7 +192,7 @@ public class PhotoViewAdapter implements PhotoView.ITileImageAdapter {
 		}
 
 		final BitmapFactory.Options options = new BitmapFactory.Options();
-		options.inPreferredConfig = Config.ARGB_8888;
+		options.inPreferredConfig = Config.RGB_565;
 		options.inPreferQualityOverSpeed = true;
 		options.inSampleSize = 1 << level;
 		Bitmap bitmap = null;
@@ -212,7 +209,7 @@ public class PhotoViewAdapter implements PhotoView.ITileImageAdapter {
 		if (wantRegion.equals(overlapRegion)) return bitmap;
 
 		final int s = tileSize + 2 * borderSize;
-		final Bitmap result = Bitmap.createBitmap(s, s, Config.ARGB_8888);
+		final Bitmap result = Bitmap.createBitmap(s, s, Config.RGB_565);
 		final Canvas canvas = new Canvas(result);
 		canvas.drawBitmap(bitmap, overlapRegion.left - wantRegion.left >> level,
 				overlapRegion.top - wantRegion.top >> level, null);

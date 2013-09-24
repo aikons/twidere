@@ -39,28 +39,29 @@ import org.mariotaku.twidere.view.holder.UserViewHolder;
 import android.content.Context;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 
-public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> implements IBaseAdapter {
+public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> implements IBaseAdapter, OnClickListener {
 
 	private final ImageLoaderWrapper mProfileImageLoader;
 	private final MultiSelectManager mMultiSelectManager;
 	private final Context mContext;
 	private final Locale mLocale;
 
-	private boolean mDisplayProfileImage, mShowAccountColor, mMultiSelectEnabled;
-
+	private boolean mDisplayProfileImage, mShowAccountColor;
 	private float mTextSize;
-
 	private int mNameDisplayOption;
+
+	private MenuButtonClickListener mListener;
 
 	public ParcelableUsersAdapter(final Context context) {
 		super(context, R.layout.user_list_item);
 		mContext = context;
 		mLocale = context.getResources().getConfiguration().locale;
-		final TwidereApplication application = TwidereApplication.getInstance(context);
-		mProfileImageLoader = application.getImageLoaderWrapper();
-		mMultiSelectManager = application.getMultiSelectManager();
+		final TwidereApplication app = TwidereApplication.getInstance(context);
+		mProfileImageLoader = app.getImageLoaderWrapper();
+		mMultiSelectManager = app.getMultiSelectManager();
 		configBaseAdapter(context, this);
 	}
 
@@ -78,15 +79,10 @@ public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> impleme
 			holder = (UserViewHolder) tag;
 		} else {
 			holder = new UserViewHolder(view);
+			holder.item_menu.setOnClickListener(this);
 			view.setTag(holder);
 		}
 		final ParcelableUser user = getItem(position);
-
-		if (mMultiSelectEnabled) {
-			holder.setSelected(mMultiSelectManager.isUserSelected(user.id));
-		} else {
-			holder.setSelected(false);
-		}
 
 		holder.setAccountColorEnabled(mShowAccountColor);
 
@@ -132,7 +128,23 @@ public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> impleme
 		if (mDisplayProfileImage) {
 			mProfileImageLoader.displayProfileImage(holder.profile_image, user.profile_image_url);
 		}
+		holder.item_menu.setTag(position);
 		return view;
+	}
+
+	@Override
+	public void onClick(final View view) {
+		if (mMultiSelectManager.isActive()) return;
+		final Object tag = view.getTag();
+		final int position = tag instanceof Integer ? (Integer) tag : -1;
+		if (position == -1) return;
+		switch (view.getId()) {
+			case R.id.item_menu: {
+				if (position == -1 || mListener == null) return;
+				mListener.onMenuButtonClick(view, position, getItemId(position));
+				break;
+			}
+		}
 	}
 
 	public void setData(final List<ParcelableUser> data) {
@@ -160,11 +172,8 @@ public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> impleme
 	}
 
 	@Override
-	public void setMultiSelectEnabled(final boolean multi) {
-		if (mMultiSelectEnabled != multi) {
-			mMultiSelectEnabled = multi;
-			notifyDataSetChanged();
-		}
+	public void setMenuButtonClickListener(final MenuButtonClickListener listener) {
+		mListener = listener;
 	}
 
 	@Override
@@ -192,4 +201,5 @@ public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> impleme
 			notifyDataSetChanged();
 		}
 	}
+
 }

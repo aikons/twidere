@@ -37,14 +37,17 @@
 		<item name="android:background">?android:attr/selectableItemBackground</item>
 	</style>
 
-	<style name="Animation.ImageViewer" parent="android:Animation">
-		<item name="android:windowEnterAnimation">@android:anim/fade_in</item>
-		<item name="android:windowExitAnimation">@android:anim/fade_out</item>
+	<style name="Widget.Twidere.TextView" parent="android:Widget.Holo.TextView">
+		<item name="android:fontFamily">sans-serif-light</item>
 	</style>
 
-	<style name="Animation.SwipeBack" parent="android:Animation">
-		<item name="android:windowEnterAnimation">@anim/slide_in_right</item>
-		<item name="android:windowExitAnimation">@anim/slide_out_right</item>
+	<style name="Widget.Twidere.Light.TextView" parent="android:Widget.Holo.Light.TextView">
+		<item name="android:fontFamily">sans-serif-light</item>
+	</style>
+
+	<style name="Animation.SwipeBack" parent="android:Animation.Activity">
+		<item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
+		<item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
 	</style>
 
 	<style name="Widget.TabPageIndicator" parent="@android:style/Widget">
@@ -57,7 +60,7 @@
 		<item name="android:orientation">horizontal</item>
 	</style>
 
-	<style name="Widget.TabPageIndicator.TextView" parent="@android:style/Widget.TextView">
+	<style name="Widget.TabPageIndicator.TextView" parent="@android:style/Widget.Holo.TextView">
 		<item name="android:textAppearance">@style/TextAppearance.TabPageIndicator</item>
 		<item name="android:textColor">#fff3f3f3</item>
 		<item name="android:textStyle">bold</item>
@@ -68,7 +71,17 @@
 		<item name="android:maxLines">1</item>
 	</style>
 
-	<style name="Widget.TabPageIndicator.TextView.Light"></style>
+	<style name="Widget.TabPageIndicator.TextView.Dark">
+		<item name="android:textColor">#fff3f3f3</item>
+	</style>
+
+	<style name="Widget.TabPageIndicator.TextView.Light">
+		<item name="android:textColor">#ff000000</item>
+	</style>
+
+	<style name="Widget.TabPageIndicator.TextView.Light.DarkActionBar">
+		<item name="android:textColor">#fff3f3f3</item>
+	</style>
 
 	<style name="TextAppearance.TabPageIndicator" parent="@android:style/TextAppearance.Small"/>
 

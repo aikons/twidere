@@ -26,6 +26,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 
@@ -38,9 +39,8 @@ public class MentionsFragment extends CursorStatusesListFragment {
 			if (getActivity() == null || !isAdded() || isDetached()) return;
 			final String action = intent.getAction();
 			if (BROADCAST_MENTIONS_REFRESHED.equals(action)) {
-				// setRefreshComplete();
-				// getLoaderManager().restartLoader(0, null,
-				// MentionsFragment.this);
+				setRefreshComplete();
+				getLoaderManager().restartLoader(0, null, MentionsFragment.this);
 			} else if (BROADCAST_MENTIONS_DATABASE_UPDATED.equals(action)) {
 				getLoaderManager().restartLoader(0, null, MentionsFragment.this);
 			} else if (BROADCAST_TASK_STATE_CHANGED.equals(action)) {
@@ -94,6 +94,12 @@ public class MentionsFragment extends CursorStatusesListFragment {
 	@Override
 	protected String getPositionKey() {
 		return "mentions_timeline";
+	}
+
+	@Override
+	protected boolean isFiltersEnabled() {
+		final SharedPreferences pref = getSharedPreferences();
+		return pref != null && pref.getBoolean(PREFERENCE_KEY_FILTERS_IN_MENTIONS, true);
 	}
 
 }

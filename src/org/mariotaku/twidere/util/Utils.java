@@ -58,6 +58,15 @@ import org.apache.http.NameValuePair;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.mariotaku.gallery3d.ImageViewerGLActivity;
+import org.mariotaku.querybuilder.AllColumns;
+import org.mariotaku.querybuilder.Columns;
+import org.mariotaku.querybuilder.Columns.Column;
+import org.mariotaku.querybuilder.OrderBy;
+import org.mariotaku.querybuilder.SQLQueryBuilder;
+import org.mariotaku.querybuilder.Selectable;
+import org.mariotaku.querybuilder.Tables;
+import org.mariotaku.querybuilder.Where;
+import org.mariotaku.twidere.BuildConfig;
 import org.mariotaku.twidere.Constants;
 import org.mariotaku.twidere.R;
 import org.mariotaku.twidere.activity.CameraCropActivity;
@@ -185,6 +194,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityManager;
+import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -205,7 +215,6 @@ public final class Utils implements Constants {
 	public static final HashMap<String, Class<? extends Fragment>> CUSTOM_TABS_FRAGMENT_MAP = new HashMap<String, Class<? extends Fragment>>();
 	public static final HashMap<String, Integer> CUSTOM_TABS_TYPE_NAME_MAP = new HashMap<String, Integer>();
 	public static final HashMap<String, Integer> CUSTOM_TABS_ICON_NAME_MAP = new HashMap<String, Integer>();
-
 	static {
 		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_STATUSES, TABLE_ID_STATUSES);
 		CONTENT_PROVIDER_URI_MATCHER.addURI(TweetStore.AUTHORITY, TABLE_ACCOUNTS, TABLE_ID_ACCOUNTS);
@@ -312,10 +321,10 @@ public final class Utils implements Constants {
 		CUSTOM_TABS_ICON_NAME_MAP.put(ICON_SPECIAL_TYPE_CUSTOMIZE, -1);
 
 	}
-
 	private static Map<Long, Integer> sAccountColors = new LinkedHashMap<Long, Integer>();
 
 	private static Map<Long, Integer> sUserColors = new LinkedHashMap<Long, Integer>(512, 0.75f, true);
+
 	private static Map<Long, String> sAccountScreenNames = new LinkedHashMap<Long, String>();
 
 	private static Map<Long, String> sAccountNames = new LinkedHashMap<Long, String>();
@@ -352,7 +361,6 @@ public final class Utils implements Constants {
 
 	public static void announceForAccessibilityCompat(final Context context, final View view, final CharSequence text,
 			final Class<?> cls) {
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.DONUT) return;
 		final AccessibilityManager accessibilityManager = (AccessibilityManager) context
 				.getSystemService(Context.ACCESSIBILITY_SERVICE);
 		if (!accessibilityManager.isEnabled()) return;
@@ -444,7 +452,8 @@ public final class Utils implements Constants {
 		return builder.build();
 	}
 
-	public static String buildStatusFilterWhereClause(final String table, final String selection) {
+	public static String buildStatusFilterWhereClause(final String table, final String selection,
+			final boolean enable_in_rts) {
 		if (table == null) return null;
 		final StringBuilder builder = new StringBuilder();
 		if (selection != null) {
@@ -455,6 +464,11 @@ public final class Utils implements Constants {
 		builder.append("SELECT DISTINCT " + table + "." + Statuses._ID + " FROM " + table);
 		builder.append(" WHERE " + table + "." + Statuses.SCREEN_NAME + " IN ( SELECT " + TABLE_FILTERED_USERS + "."
 				+ Filters.Users.VALUE + " FROM " + TABLE_FILTERED_USERS + " )");
+		// TODO
+		if (enable_in_rts) {
+			builder.append(" OR " + table + "." + Statuses.RETWEETED_BY_SCREEN_NAME + " IN ( SELECT "
+					+ TABLE_FILTERED_USERS + "." + Filters.Users.VALUE + " FROM " + TABLE_FILTERED_USERS + " )");
+		}
 		builder.append(" AND " + table + "." + Statuses.IS_GAP + " IS NULL");
 		builder.append(" OR " + table + "." + Statuses.IS_GAP + " == 0");
 		builder.append(" UNION ");
@@ -510,37 +524,34 @@ public final class Utils implements Constants {
 					continue;
 				}
 				final String table = getTableNameByUri(uri);
-				final StringBuilder where = new StringBuilder();
-				where.append(Statuses.ACCOUNT_ID + " = " + account_id);
-				where.append(" AND ");
-				where.append(Statuses._ID + " NOT IN (");
-				where.append(" SELECT " + Statuses._ID + " FROM " + table);
-				where.append(" WHERE " + Statuses.ACCOUNT_ID + " = " + account_id);
-				where.append(" ORDER BY " + Statuses.STATUS_ID + " DESC");
-				where.append(" LIMIT " + item_limit + ")");
-				resolver.delete(uri, where.toString(), null);
+				final Where account_where = new Where(Statuses.ACCOUNT_ID + " = " + account_id);
+				final SQLQueryBuilder qb = new SQLQueryBuilder();
+				qb.select(new Column(Statuses._ID)).from(new Tables(table));
+				qb.where(new Where(Statuses.ACCOUNT_ID + " = " + account_id));
+				qb.orderBy(new OrderBy(Statuses.STATUS_ID + " DESC"));
+				qb.limit(item_limit);
+				final Where where = Where.notIn(new Column(Statuses._ID), qb.build()).and(account_where);
+				resolver.delete(uri, where.getSQL(), null);
 			}
 			for (final Uri uri : DIRECT_MESSAGES_URIS) {
 				final String table = getTableNameByUri(uri);
-				final StringBuilder where = new StringBuilder();
-				where.append(DirectMessages.ACCOUNT_ID + " = " + account_id);
-				where.append(" AND ");
-				where.append(DirectMessages._ID + " NOT IN (");
-				where.append(" SELECT " + DirectMessages._ID + " FROM " + table);
-				where.append(" WHERE " + DirectMessages.ACCOUNT_ID + " = " + account_id);
-				where.append(" ORDER BY " + DirectMessages.MESSAGE_ID + " DESC");
-				where.append(" LIMIT " + item_limit + ")");
-				resolver.delete(uri, where.toString(), null);
+				final Where account_where = new Where(DirectMessages.ACCOUNT_ID + " = " + account_id);
+				final SQLQueryBuilder qb = new SQLQueryBuilder();
+				qb.select(new Column(DirectMessages._ID)).from(new Tables(table));
+				qb.where(new Where(DirectMessages.ACCOUNT_ID + " = " + account_id));
+				qb.orderBy(new OrderBy(DirectMessages.MESSAGE_ID + " DESC"));
+				qb.limit(item_limit);
+				final Where where = Where.notIn(new Column(DirectMessages._ID), qb.build()).and(account_where);
+				resolver.delete(uri, where.getSQL(), null);
 			}
 		}
 		// Clean cached values.
 		for (final Uri uri : CACHE_URIS) {
 			final String table = getTableNameByUri(uri);
-			final StringBuilder where = new StringBuilder();
-			where.append(Statuses._ID + " NOT IN (");
-			where.append(" SELECT " + BaseColumns._ID + " FROM " + table);
-			where.append(" LIMIT " + (int) (Math.sqrt(item_limit) * 100) + ")");
-			resolver.delete(uri, where.toString(), null);
+			final SQLQueryBuilder qb = new SQLQueryBuilder();
+			qb.select(new Column(BaseColumns._ID)).from(new Tables(table));
+			final Where where = Where.notIn(new Column(Statuses._ID), qb.build());
+			resolver.delete(uri, where.getSQL(), null);
 		}
 	}
 
@@ -550,6 +561,19 @@ public final class Utils implements Constants {
 
 	public static void clearAccountName() {
 		sAccountScreenNames.clear();
+	}
+
+	public static void clearListViewChoices(final ListView view) {
+		if (view == null) return;
+		final ListAdapter adapter = view.getAdapter();
+		if (adapter == null) return;
+		view.clearChoices();
+		view.setChoiceMode(ListView.CHOICE_MODE_NONE);
+		// Workaround for Android bug
+		// http://stackoverflow.com/questions/9754170/listview-selection-remains-persistent-after-exiting-choice-mode
+		final int position = view.getFirstVisiblePosition(), offset = Utils.getFirstChildOffset(view);
+		view.setAdapter(adapter);
+		Utils.scrollListToPosition(view, position, offset);
 	}
 
 	public static void clearUserColor(final Context context, final long user_id) {
@@ -692,11 +716,9 @@ public final class Utils implements Constants {
 				+ status.getId();
 		final ContentResolver resolver = context.getContentResolver();
 		final boolean large_profile_image = context.getResources().getBoolean(R.bool.hires_profile_image);
-		final boolean large_preview_image = Utils.getImagePreviewDisplayOptionInt(context) == IMAGE_PREVIEW_DISPLAY_OPTION_CODE_LARGE;
 		resolver.delete(CachedStatuses.CONTENT_URI, where, null);
-		resolver.insert(CachedStatuses.CONTENT_URI,
-				makeStatusContentValues(status, account_id, large_profile_image, large_preview_image));
-		return new ParcelableStatus(status, account_id, false, large_profile_image, true);
+		resolver.insert(CachedStatuses.CONTENT_URI, makeStatusContentValues(status, account_id, large_profile_image));
+		return new ParcelableStatus(status, account_id, false, large_profile_image);
 	}
 
 	public static ParcelableStatus findStatusInDatabases(final Context context, final long account_id,
@@ -996,7 +1018,8 @@ public final class Utils implements Constants {
 		if (context == null) return 0;
 		final ContentResolver resolver = context.getContentResolver();
 		final Cursor cur = resolver.query(uri, new String[] { Statuses.STATUS_ID },
-				buildStatusFilterWhereClause(getTableNameByUri(uri), null), null, null);
+				buildStatusFilterWhereClause(getTableNameByUri(uri), null, shouldEnableFiltersForRTs(context)), null,
+				null);
 		if (cur == null) return 0;
 		try {
 			return cur.getCount();
@@ -1009,7 +1032,8 @@ public final class Utils implements Constants {
 		if (context == null) return new long[0];
 		final ContentResolver resolver = context.getContentResolver();
 		final Cursor cur = resolver.query(uri, new String[] { Statuses.STATUS_ID },
-				buildStatusFilterWhereClause(getTableNameByUri(uri), null), null, null);
+				buildStatusFilterWhereClause(getTableNameByUri(uri), null, shouldEnableFiltersForRTs(context)), null,
+				null);
 		if (cur == null) return new long[0];
 		final long[] ids = new long[cur.getCount()];
 		cur.moveToFirst();
@@ -1133,6 +1157,16 @@ public final class Utils implements Constants {
 		return bm;
 	}
 
+	public static Selectable getColumnsFromProjection(final String... projection) {
+		if (projection == null) return new AllColumns();
+		final int length = projection.length;
+		final Column[] columns = new Column[length];
+		for (int i = 0; i < length; i++) {
+			columns[i] = new Column(projection[i]);
+		}
+		return new Columns(columns);
+	}
+
 	public static long getDefaultAccountId(final Context context) {
 		if (context == null) return -1;
 		final SharedPreferences prefs = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
@@ -1172,6 +1206,11 @@ public final class Utils implements Constants {
 		if (context != null && t instanceof TwitterException)
 			return getTwitterErrorMessage(context, (TwitterException) t);
 		return t.getMessage();
+	}
+
+	public static int getFirstChildOffset(final ListView list) {
+		if (list == null || list.getChildCount() == 0) return 0;
+		return list.getChildAt(0).getTop();
 	}
 
 	public static List<SupportTabSpec> getHomeTabs(final Context context) {
@@ -1279,28 +1318,13 @@ public final class Utils implements Constants {
 		return null;
 	}
 
-	public static int getImagePreviewDisplayOptionInt(final Context context) {
-		if (context == null) return IMAGE_PREVIEW_DISPLAY_OPTION_CODE_NONE;
-		final SharedPreferences prefs = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-		final String option = prefs.getString(PREFERENCE_KEY_IMAGE_PREVIEW_DISPLAY_OPTION,
-				IMAGE_PREVIEW_DISPLAY_OPTION_NONE);
-		return getImagePreviewDisplayOptionInt(option);
-	}
-
-	public static int getImagePreviewDisplayOptionInt(final String option) {
-		if (IMAGE_PREVIEW_DISPLAY_OPTION_LARGE.equals(option))
-			return IMAGE_PREVIEW_DISPLAY_OPTION_CODE_LARGE;
-		else if (IMAGE_PREVIEW_DISPLAY_OPTION_SMALL.equals(option)) return IMAGE_PREVIEW_DISPLAY_OPTION_CODE_SMALL;
-		return IMAGE_PREVIEW_DISPLAY_OPTION_CODE_NONE;
-	}
-
 	public static List<PreviewImage> getImagesInStatus(final String status_string) {
 		if (status_string == null) return Collections.emptyList();
 		final List<PreviewImage> images = new ArrayList<PreviewImage>();
 		final HtmlLinkExtractor extractor = new HtmlLinkExtractor();
 		extractor.grabLinks(status_string);
 		for (final HtmlLink link : extractor.grabLinks(status_string)) {
-			final PreviewImage spec = PreviewImage.getAllAvailableImage(link.getLink(), true);
+			final PreviewImage spec = PreviewImage.getAllAvailableImage(link.getLink());
 			if (spec != null) {
 				images.add(spec);
 			}
@@ -1893,6 +1917,10 @@ public final class Utils implements Constants {
 		return plugged || level / scale > 0.15f;
 	}
 
+	public static boolean isDebugBuild() {
+		return BuildConfig.DEBUG;
+	}
+
 	public static boolean isDebuggable(final Context context) {
 		if (context == null) return false;
 		final ApplicationInfo info;
@@ -1972,35 +2000,6 @@ public final class Utils implements Constants {
 		if (context == null) return false;
 		final ContentResolver resolver = context.getContentResolver();
 		final String where = Accounts.SCREEN_NAME + " = ?";
-		final Cursor cur = resolver.query(Accounts.CONTENT_URI, new String[0], where, new String[] { screen_name },
-				null);
-		try {
-			return cur != null && cur.getCount() > 0;
-		} finally {
-			if (cur != null) {
-				cur.close();
-			}
-		}
-	}
-
-	public static boolean isMyActivatedAccount(final Context context, final long account_id) {
-		if (context == null || account_id <= 0) return false;
-		final ContentResolver resolver = context.getContentResolver();
-		final String where = Accounts.IS_ACTIVATED + " = 1 AND " + Accounts.ACCOUNT_ID + " = " + account_id;
-		final Cursor cur = resolver.query(Accounts.CONTENT_URI, new String[0], where, null, null);
-		try {
-			return cur != null && cur.getCount() > 0;
-		} finally {
-			if (cur != null) {
-				cur.close();
-			}
-		}
-	}
-
-	public static boolean isMyActivatedAccount(final Context context, final String screen_name) {
-		if (context == null) return false;
-		final ContentResolver resolver = context.getContentResolver();
-		final String where = Accounts.IS_ACTIVATED + " = 1 AND " + Accounts.SCREEN_NAME + " = ?";
 		final Cursor cur = resolver.query(Accounts.CONTENT_URI, new String[0], where, new String[] { screen_name },
 				null);
 		try {
@@ -2199,7 +2198,7 @@ public final class Utils implements Constants {
 	}
 
 	public static ContentValues makeStatusContentValues(Status status, final long account_id,
-			final boolean large_profile_image, final boolean large_preview_image) {
+			final boolean large_profile_image) {
 		if (status == null || status.getId() <= 0) return null;
 		final ContentValues values = new ContentValues();
 		values.put(Statuses.ACCOUNT_ID, account_id);
@@ -2248,9 +2247,7 @@ public final class Utils implements Constants {
 		}
 		values.put(Statuses.IS_RETWEET, is_retweet);
 		values.put(Statuses.IS_FAVORITE, status.isFavorited());
-		final PreviewImage preview = PreviewImage.getPreviewImage(text_html,
-				!large_preview_image ? IMAGE_PREVIEW_DISPLAY_OPTION_CODE_SMALL
-						: IMAGE_PREVIEW_DISPLAY_OPTION_CODE_LARGE);
+		final PreviewImage preview = PreviewImage.getPreviewImage(text_html, true);
 		values.put(Statuses.IMAGE_PREVIEW_URL, preview != null ? preview.image_preview_url : null);
 		return values;
 	}
@@ -3061,9 +3058,13 @@ public final class Utils implements Constants {
 	}
 
 	public static void scrollListToPosition(final ListView list, final int position) {
+		scrollListToPosition(list, position, 0);
+	}
+
+	public static void scrollListToPosition(final ListView list, final int position, final int offset) {
 		if (list == null) return;
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
-			list.setSelection(position);
+			list.setSelectionFromTop(position, offset);
 			list.dispatchTouchEvent(MotionEvent.obtain(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(),
 					MotionEvent.ACTION_CANCEL, 0, 0, 0));
 		} else {
@@ -3071,7 +3072,7 @@ public final class Utils implements Constants {
 					MotionEvent.ACTION_DOWN, 0, 0, 0));
 			list.dispatchTouchEvent(MotionEvent.obtain(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(),
 					MotionEvent.ACTION_UP, 0, 0, 0));
-			list.setSelection(position);
+			list.setSelectionFromTop(position, offset);
 		}
 	}
 
@@ -3144,6 +3145,12 @@ public final class Utils implements Constants {
 		sUserColors.put(user_id, color);
 	}
 
+	public static boolean shouldEnableFiltersForRTs(final Context context) {
+		if (context == null) return false;
+		final SharedPreferences prefs = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+		return prefs.getBoolean(PREFERENCE_KEY_FILTERS_FOR_RTS, true);
+	}
+
 	public static void showErrorMessage(final Context context, final CharSequence message, final boolean long_message) {
 		if (context == null) return;
 		final String text;
@@ -3193,7 +3200,6 @@ public final class Utils implements Constants {
 			showTwitterErrorMessage(context, action, (TwitterException) t, long_message);
 			return;
 		} else if (t != null) {
-			t.printStackTrace();
 			final String t_message = trimLineBreak(t.getMessage());
 			if (action != null) {
 				message = context.getString(R.string.error_message_with_action, action, t_message);
@@ -3270,7 +3276,6 @@ public final class Utils implements Constants {
 		if (context == null) return;
 		final String message;
 		if (te != null) {
-			te.printStackTrace();
 			if (action != null) {
 				if (te.exceededRateLimitation()) {
 					final RateLimitStatus status = te.getRateLimitStatus();

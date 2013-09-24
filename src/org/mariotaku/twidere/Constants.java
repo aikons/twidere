@@ -120,9 +120,6 @@ public interface Constants {
 
 	public static final String OAUTH_CALLBACK_OOB = "oob";
 
-	public static final String SHUFFIX_SCROLL_TO_TOP = ".SCROLL_TO_TOP";
-	public static final String SHUFFIX_REFRESH_TAB = ".REFRESH_TAB";
-
 	public static final String FORMAT_PATTERN_TITLE = "[TITLE]";
 	public static final String FORMAT_PATTERN_TEXT = "[TEXT]";
 	public static final String FORMAT_PATTERN_NAME = "[NAME]";
@@ -136,7 +133,7 @@ public interface Constants {
 	public static final String PREFERENCE_KEY_CLEAR_DATABASES = "clear_databases";
 	public static final String PREFERENCE_KEY_CLEAR_CACHE = "clear_cache";
 	public static final String PREFERENCE_KEY_DISPLAY_PROFILE_IMAGE = "display_profile_image";
-	public static final String PREFERENCE_KEY_IMAGE_PREVIEW_DISPLAY_OPTION = "image_preview_display_option";
+	public static final String PREFERENCE_KEY_DISPLAY_IMAGE_PREVIEW = "display_image_preview";
 	public static final String PREFERENCE_KEY_BOTTOM_COMPOSE_BUTTON = "bottom_compose_button";
 	public static final String PREFERENCE_KEY_LEFTSIDE_COMPOSE_BUTTON = "leftside_compose_button";
 	public static final String PREFERENCE_KEY_BOTTOM_SEND_BUTTON = "bottom_send_button";
@@ -153,7 +150,6 @@ public interface Constants {
 	public static final String PREFERENCE_KEY_ENABLE_PROXY = "enable_proxy";
 	public static final String PREFERENCE_KEY_PROXY_HOST = "proxy_host";
 	public static final String PREFERENCE_KEY_PROXY_PORT = "proxy_port";
-	public static final String PREFERENCE_KEY_SORT_TIMELINE_BY_TIME = "sort_timeline_by_time";
 	public static final String PREFERENCE_KEY_REFRESH_ON_START = "refresh_on_start";
 	public static final String PREFERENCE_KEY_REFRESH_AFTER_TWEET = "refresh_after_tweet";
 	public static final String PREFERENCE_KEY_AUTO_REFRESH = "auto_refresh";
@@ -185,7 +181,6 @@ public interface Constants {
 	public static final String PREFERENCE_KEY_COMPOSE_ACCOUNTS = "compose_accounts";
 	public static final String PREFERENCE_KEY_TCP_DNS_QUERY = "tcp_dns_query";
 	public static final String PREFERENCE_KEY_DNS_SERVER = "dns_server";
-	public static final String PREFERENCE_KEY_CLICK_TO_OPEN_MENU = "click_to_open_menu";
 	public static final String PREFERENCE_KEY_SEPARATE_RETWEET_ACTION = "separate_retweet_action";
 	public static final String PREFERENCE_KEY_API_UPGRADE_CONFIRMED = "api_upgrade_confirmed";
 	public static final String PREFERENCE_KEY_CONNECTION_TIMEOUT = "connection_timeout";
@@ -218,6 +213,11 @@ public interface Constants {
 	public static final String PREFERENCE_KEY_OAUTH_BASE_URL = "oauth_base_url";
 	public static final String PREFERENCE_KEY_SIGNING_REST_BASE_URL = "signing_rest_base_url";
 	public static final String PREFERENCE_KEY_SIGNING_OAUTH_BASE_URL = "signing_oauth_base_url";
+	public static final String PREFERENCE_KEY_AUTH_TYPE = "auth_type";
+	public static final String PREFERENCE_KEY_API_LAST_CHANGE = "api_last_change";
+	public static final String PREFERENCE_KEY_FILTERS_IN_HOME_TIMELINE = "filters_in_home_timeline";
+	public static final String PREFERENCE_KEY_FILTERS_IN_MENTIONS = "filters_in_mentions";
+	public static final String PREFERENCE_KEY_FILTERS_FOR_RTS = "filters_for_rts";
 
 	public static final String PREFERENCE_DEFAULT_QUOTE_FORMAT = "RT @" + FORMAT_PATTERN_NAME + ": "
 			+ FORMAT_PATTERN_TEXT;
@@ -234,13 +234,6 @@ public interface Constants {
 	public static final int NAME_DISPLAY_OPTION_CODE_BOTH = 0;
 	public static final int NAME_DISPLAY_OPTION_CODE_NAME = 1;
 	public static final int NAME_DISPLAY_OPTION_CODE_SCREEN_NAME = 2;
-
-	public static final String IMAGE_PREVIEW_DISPLAY_OPTION_NONE = "none";
-	public static final String IMAGE_PREVIEW_DISPLAY_OPTION_LARGE = "large";
-	public static final String IMAGE_PREVIEW_DISPLAY_OPTION_SMALL = "small";
-	public static final int IMAGE_PREVIEW_DISPLAY_OPTION_CODE_NONE = 0;
-	public static final int IMAGE_PREVIEW_DISPLAY_OPTION_CODE_LARGE = 1;
-	public static final int IMAGE_PREVIEW_DISPLAY_OPTION_CODE_SMALL = 2;
 
 	public static final String COMPOSE_QUIT_ACTION_ASK = "ask";
 	public static final String COMPOSE_QUIT_ACTION_SAVE = "save";
@@ -273,6 +266,7 @@ public interface Constants {
 	public static final String INTENT_ACTION_SERVICE_COMMAND = INTENT_PACKAGE_PREFIX + "SERVICE_COMMAND";
 	public static final String INTENT_ACTION_REQUEST_PERMISSIONS = INTENT_PACKAGE_PREFIX + "REQUEST_PERMISSIONS";
 	public static final String INTENT_ACTION_SELECT_USER_LIST = INTENT_PACKAGE_PREFIX + "SELECT_USER_LIST";
+	public static final String INTENT_ACTION_SELECT_USER = INTENT_PACKAGE_PREFIX + "SELECT_USER";
 
 	public static final String INTENT_ACTION_EXTENSION_EDIT_IMAGE = INTENT_PACKAGE_PREFIX + "EXTENSION_EDIT_IMAGE";
 	public static final String INTENT_ACTION_EXTENSION_UPLOAD = INTENT_PACKAGE_PREFIX + "EXTENSION_UPLOAD";
@@ -483,6 +477,7 @@ public interface Constants {
 	public static final int MENU_FAVORITES = R.id.favorites;
 	public static final int MENU_LISTS = R.id.lists;
 	public static final int MENU_CENTER = R.id.center;
+	public static final int MENU_FILTERS = R.id.filters;
 
 	public static final int REQUEST_TAKE_PHOTO = 1;
 	public static final int REQUEST_PICK_IMAGE = 2;
@@ -582,6 +577,7 @@ public interface Constants {
 	public static final int NOTIFICATION_ID_DIRECT_MESSAGES = 3;
 	public static final int NOTIFICATION_ID_DRAFTS = 4;
 	public static final int NOTIFICATION_ID_DATA_PROFILING = 5;
+	public static final int NOTIFICATION_ID_UPDATE_STATUS = 6;
 
 	public static final String ICON_SPECIAL_TYPE_CUSTOMIZE = "_customize";
 

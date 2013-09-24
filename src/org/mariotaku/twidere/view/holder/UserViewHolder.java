@@ -20,8 +20,7 @@
 package org.mariotaku.twidere.view.holder;
 
 import org.mariotaku.twidere.R;
-import org.mariotaku.twidere.util.ThemeUtils;
-import org.mariotaku.twidere.view.ColorLabelRelativeLayout;
+import org.mariotaku.twidere.view.iface.IColorLabelView;
 
 import android.graphics.Color;
 import android.view.View;
@@ -33,15 +32,13 @@ public class UserViewHolder {
 	public final ImageView profile_image;
 	public final TextView name, screen_name, description, location, url, statuses_count, followers_count,
 			friends_count;
-	private final ColorLabelRelativeLayout content;
-	private final int theme_color;
+	public final View item_menu;
+	private final IColorLabelView content;
 	private boolean account_color_enabled;
 	private float text_size;
 
 	public UserViewHolder(final View view) {
-		content = (ColorLabelRelativeLayout) view;
-		final int color = ThemeUtils.getThemeColor(view.getContext());
-		theme_color = Color.argb(0x60, Color.red(color), Color.green(color), Color.blue(color));
+		content = (IColorLabelView) view.findViewById(R.id.content);
 		profile_image = (ImageView) view.findViewById(R.id.profile_image);
 		name = (TextView) view.findViewById(R.id.name);
 		screen_name = (TextView) view.findViewById(R.id.screen_name);
@@ -51,16 +48,17 @@ public class UserViewHolder {
 		statuses_count = (TextView) view.findViewById(R.id.statuses_count);
 		followers_count = (TextView) view.findViewById(R.id.followers_count);
 		friends_count = (TextView) view.findViewById(R.id.friends_count);
+		item_menu = view.findViewById(R.id.item_menu);
 	}
 
 	public void setAccountColor(final int color) {
-		content.drawRight(account_color_enabled ? color : Color.TRANSPARENT);
+		content.drawEnd(account_color_enabled ? color : Color.TRANSPARENT);
 	}
 
 	public void setAccountColorEnabled(final boolean enabled) {
 		account_color_enabled = enabled;
 		if (!account_color_enabled) {
-			content.drawRight(Color.TRANSPARENT);
+			content.drawEnd(Color.TRANSPARENT);
 		}
 	}
 
@@ -68,26 +66,21 @@ public class UserViewHolder {
 		content.drawBackground(color);
 	}
 
-	public void setSelected(final boolean selected) {
-		content.setBackgroundColor(selected ? theme_color : Color.TRANSPARENT);
-	}
-
 	public void setTextSize(final float text_size) {
-		if (this.text_size != text_size) {
-			this.text_size = text_size;
-			description.setTextSize(text_size);
-			name.setTextSize(text_size);
-			screen_name.setTextSize(text_size * 0.75f);
-			location.setTextSize(text_size);
-			url.setTextSize(text_size);
-			statuses_count.setTextSize(text_size);
-			followers_count.setTextSize(text_size);
-			friends_count.setTextSize(text_size);
-		}
+		if (this.text_size == text_size) return;
+		this.text_size = text_size;
+		description.setTextSize(text_size);
+		name.setTextSize(text_size);
+		screen_name.setTextSize(text_size * 0.75f);
+		location.setTextSize(text_size);
+		url.setTextSize(text_size);
+		statuses_count.setTextSize(text_size);
+		followers_count.setTextSize(text_size);
+		friends_count.setTextSize(text_size);
 	}
 
 	public void setUserColor(final int color) {
-		content.drawLeft(color);
+		content.drawStart(color);
 	}
 
 }

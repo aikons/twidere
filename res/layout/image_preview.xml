@@ -1,19 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<org.mariotaku.twidere.view.SquareFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	android:id="@+id/image_preview"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content">
 
-	<org.mariotaku.twidere.view.StatusImagePreviewPager
-		android:id="@+id/preview_pager"
+	<FrameLayout
+		android:id="@+id/gallery_container"
 		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:visibility="gone"/>
+		android:layout_height="match_parent">
+
+		<Gallery
+			android:id="@+id/preview_gallery"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"/>
+
+		<ImageButton
+			android:id="@+id/prev_image"
+			android:layout_width="64dp"
+			android:layout_height="match_parent"
+			android:layout_gravity="left"
+			android:background="?android:selectableItemBackground"
+			android:src="@drawable/arrow_left_holo"
+			android:visibility="gone"/>
+
+		<ImageButton
+			android:id="@+id/next_image"
+			android:layout_width="64dp"
+			android:layout_height="match_parent"
+			android:layout_gravity="right"
+			android:background="?android:selectableItemBackground"
+			android:src="@drawable/arrow_right_holo"
+			android:visibility="gone"/>
+	</FrameLayout>
 
 	<FrameLayout
 		android:id="@+id/load_images"
 		android:layout_width="match_parent"
-		android:layout_height="@dimen/image_preview_height"
+		android:layout_height="match_parent"
 		android:background="?android:selectableItemBackground">
 
 		<TextView
@@ -27,4 +50,4 @@
 			android:textStyle="bold"/>
 	</FrameLayout>
 
-</FrameLayout>
+</org.mariotaku.twidere.view.SquareFrameLayout>

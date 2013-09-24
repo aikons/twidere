@@ -25,6 +25,7 @@ import static org.mariotaku.twidere.util.Utils.getActivatedAccountIds;
 import static org.mariotaku.twidere.util.Utils.getNewestStatusIdsFromDatabase;
 import static org.mariotaku.twidere.util.Utils.getOldestStatusIdsFromDatabase;
 import static org.mariotaku.twidere.util.Utils.getTableNameByUri;
+import static org.mariotaku.twidere.util.Utils.shouldEnableFiltersForRTs;
 
 import org.mariotaku.twidere.activity.HomeActivity;
 import org.mariotaku.twidere.adapter.CursorStatusesAdapter;
@@ -74,18 +75,18 @@ public abstract class CursorStatusesListFragment extends BaseStatusesListFragmen
 	@Override
 	public void onActivityCreated(final Bundle savedInstanceState) {
 		super.onActivityCreated(savedInstanceState);
-		getListAdapter().setFiltersEnabled(true);
+		getListAdapter().setFiltersEnabled(isFiltersEnabled());
 	}
 
 	@Override
 	public Loader<Cursor> onCreateLoader(final int id, final Bundle args) {
 		final Uri uri = getContentUri();
-		final String sort_by = getSharedPreferences().getBoolean(PREFERENCE_KEY_SORT_TIMELINE_BY_TIME, false) ? Statuses.SORT_ORDER_TIMESTAMP_DESC
-				: Statuses.SORT_ORDER_STATUS_ID_DESC;
-		final String where = buildActivatedStatsWhereClause(getActivity(), null);
 		final String table = getTableNameByUri(uri);
-		return new CursorLoader(getActivity(), uri, CURSOR_COLS, buildStatusFilterWhereClause(table, where), null,
-				sort_by);
+		final String sort_by = Statuses.SORT_ORDER_STATUS_ID_DESC;
+		final String activated_where = buildActivatedStatsWhereClause(getActivity(), null);
+		final String where = isFiltersEnabled() ? buildStatusFilterWhereClause(table, activated_where,
+				shouldEnableFiltersForRTs(getActivity())) : activated_where;
+		return new CursorLoader(getActivity(), uri, CURSOR_COLS, where, null, sort_by);
 	}
 
 	@Override
@@ -160,6 +161,8 @@ public abstract class CursorStatusesListFragment extends BaseStatusesListFragmen
 	protected long[] getOldestStatusIds() {
 		return getOldestStatusIdsFromDatabase(getActivity(), getContentUri());
 	}
+
+	protected abstract boolean isFiltersEnabled();
 
 	@Override
 	protected void loadMoreStatuses() {

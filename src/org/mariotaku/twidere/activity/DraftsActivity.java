@@ -193,10 +193,12 @@ public class DraftsActivity extends TwidereSwipeBackActivity implements LoaderCa
 		mTwitterWrapper = getTwidereApplication().getTwitterWrapper();
 		mPreferences = getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
 		mTextSize = mPreferences.getInt(PREFERENCE_KEY_TEXT_SIZE, getDefaultTextSize(this));
-		setContentView(R.layout.base_list);
+		setContentView(android.R.layout.list_content);
+		setOverrideExitAniamtion(false);
 		getActionBar().setDisplayHomeAsUpEnabled(true);
 		mAdapter = new DraftsAdapter(this);
 		mListView = (ListView) findViewById(android.R.id.list);
+		mListView.setDivider(null);
 		mListView.setAdapter(mAdapter);
 		mListView.setOnItemClickListener(this);
 		mListView.setOnItemLongClickListener(this);

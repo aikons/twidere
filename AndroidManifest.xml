@@ -24,6 +24,9 @@
 	<uses-feature
 		android:name="android.hardware.touchscreen"
 		android:required="false"/>
+	<uses-feature
+		android:glEsVersion="0x00020000"
+		android:required="true"/>
 
 	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
@@ -32,6 +35,7 @@
 	<uses-permission android:name="android.permission.VIBRATE"/>
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+	<uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES"/>
 
 	<application
 		android:name=".app.TwidereApplication"
@@ -44,12 +48,16 @@
 		<uses-library
 			android:name="com.google.android.maps"
 			android:required="false"/>
-		<!--
 		<uses-library
 			android:name="com.sec.android.app.multiwindow"
 			android:required="false"/>
-		-->
 
+		<meta-data
+			android:name="com.google.android.backup.api_key"
+			android:value="AEdPqrEAAAAIKbKATV1AGbLB4kem3w8QaPVJSPVVumbMHxkfwA"/>
+		<meta-data
+			android:name="com.google.android.maps.v2.API_KEY"
+			android:value="AIzaSyCVdCIMFFxdNqHnCPrJ9yKUzoTfs8jhYGc"/>
 		<meta-data
 			android:name="com.sec.android.support.multiwindow"
 			android:value="true"/>
@@ -65,9 +73,6 @@
 		<meta-data
 			android:name="com.sec.android.multiwindow.MINIMUM_SIZE_H"
 			android:value="320dp"/>
-		<meta-data
-			android:name="com.google.android.backup.api_key"
-			android:value="AEdPqrEAAAAIKbKATV1AGbLB4kem3w8QaPVJSPVVumbMHxkfwA"/>
 
 		<activity
 			android:name=".activity.HomeActivity"
@@ -141,6 +146,16 @@
 			</intent-filter>
 		</activity>
 		<activity
+			android:name=".activity.AuthorizeActivity"
+			android:label="@string/login_to_twitter"
+			android:windowSoftInputMode="adjustResize">
+			<intent-filter>
+				<action android:name="org.mariotaku.twidere.TWITTER_BROWSER_LOGIN"/>
+
+				<category android:name="android.intent.category.DEFAULT"/>
+			</intent-filter>
+		</activity>
+		<activity
 			android:name=".activity.SettingsActivity"
 			android:label="@string/settings">
 			<intent-filter>
@@ -155,12 +170,25 @@
 				android:value=".activity.HomeActivity"/>
 		</activity>
 		<activity
+			android:name=".activity.FiltersActivity"
+			android:label="@string/filters">
+			<intent-filter>
+				<action android:name="org.mariotaku.twidere.FILTERS"/>
+
+				<category android:name="android.intent.category.DEFAULT"/>
+			</intent-filter>
+
+			<meta-data
+				android:name="android.support.PARENT_ACTIVITY"
+				android:value=".activity.HomeActivity"/>
+		</activity>
+		<activity
 			android:name=".activity.EditAPIActivity"
 			android:label="@string/edit_api"
 			android:theme="@style/Theme.Twidere.Light.Dialog"
 			android:windowSoftInputMode="adjustResize"/>
 		<activity
-			android:name=".activity.AccountSelectorActivity"
+			android:name="org.mariotaku.twidere.activity.AccountSelectorActivity"
 			android:label="@string/select_account"
 			android:theme="@style/Theme.Twidere.Light.Dialog">
 			<intent-filter>
@@ -170,7 +198,7 @@
 			</intent-filter>
 		</activity>
 		<activity
-			android:name=".activity.BrowserActivity"
+			android:name="org.mariotaku.twidere.activity.BrowserActivity"
 			android:exported="false"
 			android:label="@string/browser"
 			android:theme="@style/Theme.Blank.SwipeBack">
@@ -185,7 +213,7 @@
 			</intent-filter>
 		</activity>
 		<activity
-			android:name=".activity.ColorPickerActivity"
+			android:name=".activity.ColorSelectorActivity"
 			android:label="@string/set_color"
 			android:theme="@style/Theme.Twidere.Light.Dialog"/>
 		<activity
@@ -316,15 +344,12 @@
 			</intent-filter>
 		</activity>
 		<activity
-			android:name=".activity.NativeMapActivity"
-			android:label="@string/view_map"/>
-		<activity
 			android:name=".activity.DonateActivity"
 			android:label="@string/donate"
 			android:theme="@style/Theme.Blank"
 			android:windowSoftInputMode="adjustResize"/>
 		<activity
-			android:name=".activity.FilePickerActivity"
+			android:name=".activity.FileSelectorActivity"
 			android:exported="false"
 			android:label="@string/pick_file"
 			android:theme="@style/Theme.Blank"
@@ -386,7 +411,7 @@
 			android:label="@string/data_profiling"
 			android:theme="@style/Theme.Blank"/>
 		<activity
-			android:name=".activity.RequestPermissionsActivity"
+			android:name="org.mariotaku.twidere.activity.RequestPermissionsActivity"
 			android:label="@string/permissions_request"
 			android:theme="@style/Theme.Twidere.Light.Dialog">
 			<intent-filter>
@@ -405,10 +430,11 @@
 			</intent-filter>
 		</activity>
 		<activity
-			android:name=".activity.UserListSelectorActivity"
+			android:name="org.mariotaku.twidere.activity.UserListSelectorActivity"
 			android:label="@string/select_user_list"
 			android:theme="@style/Theme.Blank.Dialog">
 			<intent-filter>
+				<action android:name="org.mariotaku.twidere.SELECT_USER"/>
 				<action android:name="org.mariotaku.twidere.SELECT_USER_LIST"/>
 
 				<category android:name="android.intent.category.DEFAULT"/>
@@ -429,6 +455,7 @@
 			android:name=".service.RefreshService"
 			android:label="@string/label_refresh_service"
 			android:settingsActivity=".activity.SettingsActivity"/>
+		<service android:name=".service.UpdateStatusService"/>
 		<service
 			android:name="edu.ucdavis.earlybird.UCDService"
 			android:settingsActivity=".activity.DataProfilingSettingsActivity"/>

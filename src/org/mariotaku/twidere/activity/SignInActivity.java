@@ -85,7 +85,7 @@ import de.keyboardsurfer.android.widget.crouton.Crouton;
 import de.keyboardsurfer.android.widget.crouton.CroutonLifecycleCallback;
 import de.keyboardsurfer.android.widget.crouton.CroutonStyle;
 
-public class SignInActivity extends BaseActivity implements TwitterConstants, OnClickListener, TextWatcher,
+public class SignInActivity extends BaseSupportActivity implements TwitterConstants, OnClickListener, TextWatcher,
 		CroutonLifecycleCallback {
 
 	private static final String TWITTER_SIGNUP_URL = "https://twitter.com/signup";
@@ -124,16 +124,15 @@ public class SignInActivity extends BaseActivity implements TwitterConstants, On
 		switch (requestCode) {
 			case REQUEST_EDIT_API: {
 				if (resultCode == RESULT_OK) {
-					Bundle bundle = new Bundle();
-					if (data != null) {
-						bundle = data.getExtras();
-					}
-					if (bundle != null) {
-						mRestBaseURL = bundle.getString(Accounts.REST_BASE_URL);
-						mSigningRestBaseURL = bundle.getString(Accounts.SIGNING_REST_BASE_URL);
-						mOAuthBaseURL = bundle.getString(Accounts.OAUTH_BASE_URL);
-						mSigningOAuthBaseURL = bundle.getString(Accounts.SIGNING_OAUTH_BASE_URL);
-						mAuthType = bundle.getInt(Accounts.AUTH_TYPE);
+					final Bundle extras = data != null ? data.getExtras() : null;
+					if (extras != null) {
+						mRestBaseURL = extras.getString(Accounts.REST_BASE_URL);
+						mSigningRestBaseURL = extras.getString(Accounts.SIGNING_REST_BASE_URL);
+						mOAuthBaseURL = extras.getString(Accounts.OAUTH_BASE_URL);
+						mSigningOAuthBaseURL = extras.getString(Accounts.SIGNING_OAUTH_BASE_URL);
+						mAuthType = extras.getInt(Accounts.AUTH_TYPE);
+						mConsumerKey = extras.getString(Accounts.CONSUMER_KEY);
+						mConsumerSecret = extras.getString(Accounts.CONSUMER_SECRET);
 						final boolean is_twip_o_mode = mAuthType == Accounts.AUTH_TYPE_TWIP_O_MODE;
 						mUsernamePasswordContainer.setVisibility(is_twip_o_mode ? View.GONE : View.VISIBLE);
 						mSigninSignupContainer.setOrientation(is_twip_o_mode ? LinearLayout.VERTICAL
@@ -144,14 +143,14 @@ public class SignInActivity extends BaseActivity implements TwitterConstants, On
 				break;
 			}
 			case REQUEST_SET_COLOR: {
-				if (resultCode == BaseActivity.RESULT_OK) if (data != null) {
+				if (resultCode == BaseSupportActivity.RESULT_OK) if (data != null) {
 					mUserColor = data.getIntExtra(Accounts.USER_COLOR, Color.TRANSPARENT);
 				}
 				setUserColorButton();
 				break;
 			}
 			case REQUEST_BROWSER_SIGN_IN: {
-				if (resultCode == BaseActivity.RESULT_OK) if (data != null && data.getExtras() != null) {
+				if (resultCode == BaseSupportActivity.RESULT_OK) if (data != null && data.getExtras() != null) {
 					doLogin(true, data.getExtras());
 				}
 				break;
@@ -188,7 +187,7 @@ public class SignInActivity extends BaseActivity implements TwitterConstants, On
 				break;
 			}
 			case R.id.set_color: {
-				final Intent intent = new Intent(this, ColorPickerActivity.class);
+				final Intent intent = new Intent(this, ColorSelectorActivity.class);
 				final Bundle bundle = new Bundle();
 				if (mUserColor != null) {
 					bundle.putInt(Accounts.USER_COLOR, mUserColor);
@@ -371,9 +370,7 @@ public class SignInActivity extends BaseActivity implements TwitterConstants, On
 		final boolean ignore_ssl_error = mPreferences.getBoolean(PREFERENCE_KEY_IGNORE_SSL_ERROR, false);
 		final boolean enable_proxy = mPreferences.getBoolean(PREFERENCE_KEY_ENABLE_PROXY, false);
 		cb.setHostAddressResolver(mApplication.getHostAddressResolver());
-		if (mPassword == null || !mPassword.contains("*")) {
-			cb.setHttpClientImplementation(HttpClientImpl.class);
-		}
+		cb.setHttpClientImplementation(HttpClientImpl.class);
 		setUserAgent(this, cb);
 		if (!isEmpty(mRestBaseURL)) {
 			cb.setRestBaseURL(mRestBaseURL);
@@ -413,6 +410,8 @@ public class SignInActivity extends BaseActivity implements TwitterConstants, On
 	}
 
 	private void setDefaultAPI() {
+		final long current = System.currentTimeMillis();
+		final boolean default_api_changed = mPreferences.getLong(PREFERENCE_KEY_API_LAST_CHANGE, current) != current;
 		final String consumer_key = getNonEmptyString(mPreferences, PREFERENCE_KEY_CONSUMER_KEY, TWITTER_CONSUMER_KEY_2);
 		final String consumer_secret = getNonEmptyString(mPreferences, PREFERENCE_KEY_CONSUMER_SECRET,
 				TWITTER_CONSUMER_SECRET_2);
@@ -424,23 +423,27 @@ public class SignInActivity extends BaseActivity implements TwitterConstants, On
 				DEFAULT_SIGNING_REST_BASE_URL);
 		final String signing_oauth_base_url = getNonEmptyString(mPreferences, PREFERENCE_KEY_SIGNING_OAUTH_BASE_URL,
 				DEFAULT_SIGNING_OAUTH_BASE_URL);
-		if (isEmpty(mConsumerKey)) {
+		final int auth_type = mPreferences.getInt(PREFERENCE_KEY_AUTH_TYPE, Accounts.AUTH_TYPE_OAUTH);
+		if (isEmpty(mConsumerKey) || default_api_changed) {
 			mConsumerKey = consumer_key;
 		}
-		if (isEmpty(mConsumerSecret)) {
+		if (isEmpty(mConsumerSecret) || default_api_changed) {
 			mConsumerSecret = consumer_secret;
 		}
-		if (isEmpty(mRestBaseURL)) {
+		if (isEmpty(mRestBaseURL) || default_api_changed) {
 			mRestBaseURL = rest_base_url;
 		}
-		if (isEmpty(mOAuthBaseURL)) {
+		if (isEmpty(mOAuthBaseURL) || default_api_changed) {
 			mOAuthBaseURL = oauth_base_url;
 		}
-		if (isEmpty(mSigningRestBaseURL)) {
+		if (isEmpty(mSigningRestBaseURL) || default_api_changed) {
 			mSigningRestBaseURL = signing_rest_base_url;
 		}
-		if (isEmpty(mSigningOAuthBaseURL)) {
+		if (isEmpty(mSigningOAuthBaseURL) || default_api_changed) {
 			mSigningOAuthBaseURL = signing_oauth_base_url;
+		}
+		if (mAuthType == 0 || default_api_changed) {
+			mAuthType = auth_type;
 		}
 	}
 

@@ -41,6 +41,7 @@ import org.mariotaku.twidere.fragment.MentionsFragment;
 import org.mariotaku.twidere.fragment.TrendsFragment;
 import org.mariotaku.twidere.fragment.iface.SupportFragmentCallback;
 import org.mariotaku.twidere.model.SupportTabSpec;
+import org.mariotaku.twidere.provider.RecentSearchProvider;
 import org.mariotaku.twidere.util.ArrayUtils;
 import org.mariotaku.twidere.util.AsyncTwitterWrapper;
 import org.mariotaku.twidere.util.MathUtils;
@@ -60,6 +61,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.provider.SearchRecentSuggestions;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentManagerTrojan;
@@ -115,7 +117,7 @@ public class HomeActivity extends DualPaneActivity implements OnClickListener, O
 			final String action = intent.getAction();
 			if (BROADCAST_TASK_STATE_CHANGED.equals(action)) {
 				updateActionsButton();
-//				updateRefreshingState();
+				// updateRefreshingState();
 			} else if (BROADCAST_ACCOUNT_LIST_DATABASE_UPDATED.equals(action)) {
 				notifyAccountsChanged();
 			}
@@ -126,6 +128,11 @@ public class HomeActivity extends DualPaneActivity implements OnClickListener, O
 	public void closeAccountsDrawer() {
 		if (mDrawerLayout == null) return;
 		mDrawerLayout.closeDrawer(Gravity.LEFT);
+	}
+
+	@Override
+	public Fragment getCurrentVisibleFragment() {
+		return mCurrentVisibleFragment;
 	}
 
 	public void notifyAccountsChanged() {
@@ -234,6 +241,12 @@ public class HomeActivity extends DualPaneActivity implements OnClickListener, O
 				}
 				return true;
 			}
+			case MENU_FILTERS: {
+				final Intent intent = new Intent(this, FiltersActivity.class);
+				intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+				startActivity(intent);
+				return true;
+			}
 			case MENU_SETTINGS: {
 				final Intent intent = new Intent(this, SettingsActivity.class);
 				intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
@@ -306,6 +319,10 @@ public class HomeActivity extends DualPaneActivity implements OnClickListener, O
 	protected BasePullToRefreshListFragment getCurrentPullToRefreshFragment() {
 		if (mCurrentVisibleFragment instanceof BasePullToRefreshListFragment)
 			return (BasePullToRefreshListFragment) mCurrentVisibleFragment;
+		else if (mCurrentVisibleFragment instanceof SupportFragmentCallback) {
+			final Fragment curr = ((SupportFragmentCallback) mCurrentVisibleFragment).getCurrentVisibleFragment();
+			if (curr instanceof BasePullToRefreshListFragment) return (BasePullToRefreshListFragment) curr;
+		}
 		return null;
 	}
 
@@ -378,10 +395,10 @@ public class HomeActivity extends DualPaneActivity implements OnClickListener, O
 			// TODO set activated account automatically
 			startActivityForResult(new Intent(INTENT_ACTION_SELECT_ACCOUNT), REQUEST_SELECT_ACCOUNT);
 		} else if (initial_tab >= 0) {
-			mViewPager.setCurrentItem(MathUtils.clamp(initial_tab, mViewPager.getChildCount(), 0));
+			mViewPager.setCurrentItem(MathUtils.clamp(initial_tab, mAdapter.getCount(), 0));
 		} else if (remember_position) {
 			final int position = mPreferences.getInt(PREFERENCE_KEY_SAVED_TAB_POSITION, TAB_POSITION_HOME);
-			mViewPager.setCurrentItem(MathUtils.clamp(position, mViewPager.getChildCount(), 0));
+			mViewPager.setCurrentItem(MathUtils.clamp(position, mAdapter.getCount(), 0));
 		}
 		if (refresh_on_start && savedInstanceState == null) {
 			mTwitterWrapper.refreshAll();
@@ -460,6 +477,11 @@ public class HomeActivity extends DualPaneActivity implements OnClickListener, O
 		final String action = intent.getAction();
 		if (Intent.ACTION_SEARCH.equals(action)) {
 			final String query = intent.getStringExtra(SearchManager.QUERY);
+			if (first_create) {
+				final SearchRecentSuggestions suggestions = new SearchRecentSuggestions(this,
+						RecentSearchProvider.AUTHORITY, RecentSearchProvider.MODE);
+				suggestions.saveRecentQuery(query, null);
+			}
 			final long account_id = getDefaultAccountId(this);
 			openSearch(this, account_id, query);
 			return -1;
@@ -567,24 +589,33 @@ public class HomeActivity extends DualPaneActivity implements OnClickListener, O
 
 	private void updateActionsButton() {
 		if (mViewPager == null || mAdapter == null) return;
-		int icon = R.drawable.ic_menu_status_compose, title = R.string.compose;
+		final int action_icon, button_icon, title;
 		final int position = mViewPager.getCurrentItem();
 		final SupportTabSpec tab = mAdapter.getTab(position);
+		final boolean light_action_bar = ThemeUtils.isLightActionBar(getCurrentThemeResource());
 		if (tab == null) {
 			title = R.string.compose;
-			icon = R.drawable.ic_menu_status_compose;
+			action_icon = light_action_bar ? R.drawable.ic_action_status_compose_light
+					: R.drawable.ic_action_status_compose_dark;
+			button_icon = R.drawable.ic_menu_status_compose;
 		} else {
 			switch (tab.position) {
 				case TAB_POSITION_MESSAGES:
-					icon = R.drawable.ic_menu_compose;
+					action_icon = light_action_bar ? R.drawable.ic_action_compose_light
+							: R.drawable.ic_action_compose_dark;
+					button_icon = R.drawable.ic_menu_compose;
 					title = R.string.compose;
 					break;
 				case TAB_POSITION_TRENDS:
-					icon = android.R.drawable.ic_menu_search;
+					action_icon = light_action_bar ? R.drawable.ic_action_search_light
+							: R.drawable.ic_action_search_dark;
+					button_icon = android.R.drawable.ic_menu_search;
 					title = android.R.string.search_go;
 					break;
 				default:
-					icon = R.drawable.ic_menu_status_compose;
+					action_icon = light_action_bar ? R.drawable.ic_action_status_compose_light
+							: R.drawable.ic_action_status_compose_dark;
+					button_icon = R.drawable.ic_menu_status_compose;
 					title = R.string.compose;
 			}
 		}
@@ -593,10 +624,9 @@ public class HomeActivity extends DualPaneActivity implements OnClickListener, O
 		final boolean has_task = hasActivatedTask();
 		final ImageView actions_icon = (ImageView) view.findViewById(R.id.actions_icon);
 		final ProgressBar progress = (ProgressBar) view.findViewById(R.id.progress);
-		actions_icon.setImageResource(icon);
+		actions_icon.setImageResource(mBottomActionsButton ? button_icon : action_icon);
 		actions_icon.setContentDescription(getString(title));
 		actions_icon.setVisibility(has_task ? View.GONE : View.VISIBLE);
 		progress.setVisibility(has_task ? View.VISIBLE : View.GONE);
 	}
-
 }

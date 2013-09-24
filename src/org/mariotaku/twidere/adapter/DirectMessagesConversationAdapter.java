@@ -30,6 +30,7 @@ import org.mariotaku.twidere.app.TwidereApplication;
 import org.mariotaku.twidere.model.DirectMessageCursorIndices;
 import org.mariotaku.twidere.model.ParcelableDirectMessage;
 import org.mariotaku.twidere.util.ImageLoaderWrapper;
+import org.mariotaku.twidere.util.MultiSelectManager;
 import org.mariotaku.twidere.util.OnDirectMessageLinkClickHandler;
 import org.mariotaku.twidere.util.TwidereLinkify;
 import org.mariotaku.twidere.view.holder.DirectMessageConversationViewHolder;
@@ -52,16 +53,21 @@ public class DirectMessagesConversationAdapter extends SimpleCursorAdapter imple
 	private final ImageLoaderWrapper mImageLoader;
 	private final Context mContext;
 	private final TwidereLinkify mLinkify;
+	private final MultiSelectManager mMultiSelectManager;
 
 	private DirectMessageCursorIndices mIndices;
 	private int mNameDisplayOption;
-	private boolean mDisplayProfileImage, mMultiSelectEnabled;
+	private boolean mDisplayProfileImage;
 	private float mTextSize;
+
+	private MenuButtonClickListener mListener;
 
 	public DirectMessagesConversationAdapter(final Context context) {
 		super(context, R.layout.direct_message_list_item, null, new String[0], new int[0], 0);
 		mContext = context;
-		mImageLoader = TwidereApplication.getInstance(context).getImageLoaderWrapper();
+		final TwidereApplication app = TwidereApplication.getInstance(context);
+		mMultiSelectManager = app.getMultiSelectManager();
+		mImageLoader = app.getImageLoaderWrapper();
 		mLinkify = new TwidereLinkify(new OnDirectMessageLinkClickHandler(context));
 		configBaseAdapter(context, this);
 	}
@@ -155,16 +161,24 @@ public class DirectMessagesConversationAdapter extends SimpleCursorAdapter imple
 
 	@Override
 	public void onClick(final View view) {
-		if (mMultiSelectEnabled) return;
+		if (mMultiSelectManager.isActive()) return;
 		final Object tag = view.getTag();
-		final ParcelableDirectMessage status = tag instanceof Integer ? getDirectMessage((Integer) tag) : null;
-		if (status == null) return;
+		final int position = tag instanceof Integer ? (Integer) tag : -1;
+		if (position == -1) return;
 		switch (view.getId()) {
 			case R.id.profile_image_left:
 			case R.id.profile_image_right: {
+				final ParcelableDirectMessage message = getDirectMessage(position);
+				if (message == null) return;
 				if (mContext instanceof Activity) {
-					openUserProfile((Activity) mContext, status.account_id, status.sender_id, status.sender_screen_name);
+					openUserProfile((Activity) mContext, message.account_id, message.sender_id,
+							message.sender_screen_name);
 				}
+				break;
+			}
+			case R.id.item_menu: {
+				if (position == -1 || mListener == null) return;
+				mListener.onMenuButtonClick(view, position, getItemId(position));
 				break;
 			}
 		}
@@ -179,10 +193,8 @@ public class DirectMessagesConversationAdapter extends SimpleCursorAdapter imple
 	}
 
 	@Override
-	public void setMultiSelectEnabled(final boolean multi) {
-		if (mMultiSelectEnabled == multi) return;
-		mMultiSelectEnabled = multi;
-		notifyDataSetChanged();
+	public void setMenuButtonClickListener(final MenuButtonClickListener listener) {
+		mListener = listener;
 	}
 
 	@Override

@@ -9,9 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.mariotaku.twidere.R;
-import org.mariotaku.twidere.adapter.AutoCompleteAdapter;
+import org.mariotaku.twidere.adapter.ParcelableUserListsAdapter;
 import org.mariotaku.twidere.adapter.ParcelableUsersAdapter;
-import org.mariotaku.twidere.adapter.UserListsAdapter;
+import org.mariotaku.twidere.adapter.UserHashtagAutoCompleteAdapter;
 import org.mariotaku.twidere.fragment.CreateUserListDialogFragment;
 import org.mariotaku.twidere.fragment.ProgressDialogFragment;
 import org.mariotaku.twidere.model.ParcelableUser;
@@ -39,7 +39,7 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AutoCompleteTextView;
 import android.widget.ListView;
 
-public class UserListSelectorActivity extends BaseDialogActivity implements OnClickListener, OnItemClickListener {
+public class UserListSelectorActivity extends BaseSupportDialogActivity implements OnClickListener, OnItemClickListener {
 
 	private final BroadcastReceiver mStatusReceiver = new BroadcastReceiver() {
 
@@ -54,7 +54,7 @@ public class UserListSelectorActivity extends BaseDialogActivity implements OnCl
 
 	private AutoCompleteTextView mEditScreenName;
 	private ListView mUserListsListView, mUsersListView;
-	private UserListsAdapter mUserListsAdapter;
+	private ParcelableUserListsAdapter mUserListsAdapter;
 	private ParcelableUsersAdapter mUsersAdapter;
 	private View mUsersListContainer, mUserListsContainer, mCreateUserListContainer;
 
@@ -106,7 +106,6 @@ public class UserListSelectorActivity extends BaseDialogActivity implements OnCl
 			setResult(RESULT_OK, data);
 			finish();
 		}
-
 	}
 
 	public void setUsersData(final List<ParcelableUser> data) {
@@ -123,6 +122,7 @@ public class UserListSelectorActivity extends BaseDialogActivity implements OnCl
 			finish();
 			return;
 		}
+		setContentView(R.layout.select_user_list);
 		mAccountId = extras.getLong(INTENT_KEY_ACCOUNT_ID);
 		if (savedInstanceState == null) {
 			mScreenName = extras.getString(INTENT_KEY_SCREEN_NAME);
@@ -130,18 +130,27 @@ public class UserListSelectorActivity extends BaseDialogActivity implements OnCl
 			mScreenName = savedInstanceState.getString(INTENT_KEY_SCREEN_NAME);
 		}
 
+		final boolean selecting_user = isSelectingUser();
 		if (!isEmpty(mScreenName)) {
-			getUserLists(mScreenName);
+			if (selecting_user) {
+				searchUser(mScreenName);
+			} else {
+				getUserLists(mScreenName);
+			}
 		}
-		setContentView(R.layout.select_user_list);
-		mEditScreenName.setAdapter(new AutoCompleteAdapter(this));
+		mEditScreenName.setAdapter(new UserHashtagAutoCompleteAdapter(this));
 		mEditScreenName.setText(mScreenName);
-		mUserListsListView.setAdapter(mUserListsAdapter = new UserListsAdapter(this));
+		mUserListsListView.setAdapter(mUserListsAdapter = new ParcelableUserListsAdapter(this));
 		mUsersListView.setAdapter(mUsersAdapter = new ParcelableUsersAdapter(this));
 		mUserListsListView.setOnItemClickListener(this);
 		mUsersListView.setOnItemClickListener(this);
-		mUsersListContainer.setVisibility(isEmpty(mScreenName) ? View.VISIBLE : View.GONE);
-		mUserListsContainer.setVisibility(isEmpty(mScreenName) ? View.GONE : View.VISIBLE);
+		if (selecting_user) {
+			mUsersListContainer.setVisibility(View.VISIBLE);
+			mUserListsContainer.setVisibility(View.GONE);
+		} else {
+			mUsersListContainer.setVisibility(isEmpty(mScreenName) ? View.VISIBLE : View.GONE);
+			mUserListsContainer.setVisibility(isEmpty(mScreenName) ? View.GONE : View.VISIBLE);
+		}
 	}
 
 	@Override
@@ -168,6 +177,10 @@ public class UserListSelectorActivity extends BaseDialogActivity implements OnCl
 		mScreenName = screen_name;
 		final GetUserListsTask task = new GetUserListsTask(this, mAccountId, screen_name);
 		task.execute();
+	}
+
+	private boolean isSelectingUser() {
+		return INTENT_ACTION_SELECT_USER.equals(getIntent().getAction());
 	}
 
 	private void searchUser(final String name) {

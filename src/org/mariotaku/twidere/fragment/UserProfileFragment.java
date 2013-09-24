@@ -20,6 +20,7 @@
 package org.mariotaku.twidere.fragment;
 
 import static android.text.TextUtils.isEmpty;
+import static org.mariotaku.twidere.util.ParseUtils.parseLong;
 import static org.mariotaku.twidere.util.Utils.addIntentToMenu;
 import static org.mariotaku.twidere.util.Utils.clearUserColor;
 import static org.mariotaku.twidere.util.Utils.formatToLongTimeString;
@@ -35,6 +36,7 @@ import static org.mariotaku.twidere.util.Utils.isMyAccount;
 import static org.mariotaku.twidere.util.Utils.openImage;
 import static org.mariotaku.twidere.util.Utils.openIncomingFriendships;
 import static org.mariotaku.twidere.util.Utils.openSavedSearches;
+import static org.mariotaku.twidere.util.Utils.openStatus;
 import static org.mariotaku.twidere.util.Utils.openTweetSearch;
 import static org.mariotaku.twidere.util.Utils.openUserBlocks;
 import static org.mariotaku.twidere.util.Utils.openUserFavorites;
@@ -52,7 +54,7 @@ import java.util.Locale;
 import org.mariotaku.popupmenu.PopupMenu;
 import org.mariotaku.popupmenu.PopupMenu.OnMenuItemClickListener;
 import org.mariotaku.twidere.R;
-import org.mariotaku.twidere.activity.ColorPickerActivity;
+import org.mariotaku.twidere.activity.ColorSelectorActivity;
 import org.mariotaku.twidere.activity.EditUserProfileActivity;
 import org.mariotaku.twidere.activity.UserListSelectorActivity;
 import org.mariotaku.twidere.adapter.ListActionAdapter;
@@ -309,8 +311,8 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 		mUser = user;
 		mUserId = user.id;
 		mScreenName = user.screen_name;
-		mProfileNameContainer.drawLeft(getUserColor(getActivity(), mUserId));
-		mProfileNameContainer.drawRight(getAccountColor(getActivity(), user.account_id));
+		mProfileNameContainer.drawStart(getUserColor(getActivity(), mUserId));
+		mProfileNameContainer.drawEnd(getAccountColor(getActivity(), user.account_id));
 		mNameView.setText(user.name);
 		mNameView.setCompoundDrawablesWithIntrinsicBounds(0, 0,
 				getUserTypeIconRes(user.is_verified, user.is_protected), 0);
@@ -443,7 +445,7 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 				if (resultCode == Activity.RESULT_OK && intent != null) {
 					final int color = intent.getIntExtra(Accounts.USER_COLOR, Color.TRANSPARENT);
 					setUserColor(getActivity(), mUserId, color);
-					mProfileNameContainer.drawLeft(getUserColor(getActivity(), mUserId));
+					mProfileNameContainer.drawStart(getUserColor(getActivity(), mUserId));
 				}
 				break;
 			}
@@ -677,6 +679,10 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 				}
 				break;
 			}
+			case TwidereLinkify.LINK_TYPE_STATUS: {
+				openStatus(getActivity(), account_id, parseLong(link));
+				break;
+			}
 		}
 	}
 
@@ -728,13 +734,13 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 				break;
 			}
 			case MENU_SET_COLOR: {
-				final Intent intent = new Intent(getActivity(), ColorPickerActivity.class);
+				final Intent intent = new Intent(getActivity(), ColorSelectorActivity.class);
 				startActivityForResult(intent, REQUEST_SET_COLOR);
 				break;
 			}
 			case MENU_CLEAR_COLOR: {
 				clearUserColor(getActivity(), mUserId);
-				mProfileNameContainer.drawLeft(getUserColor(getActivity(), mUserId));
+				mProfileNameContainer.drawStart(getUserColor(getActivity(), mUserId));
 				break;
 			}
 			case MENU_ADD_TO_LIST: {
@@ -785,7 +791,7 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 		filter.addAction(BROADCAST_PROFILE_IMAGE_UPDATED);
 		filter.addAction(BROADCAST_PROFILE_BANNER_UPDATED);
 		registerReceiver(mStatusReceiver, filter);
-		mProfileNameContainer.drawLeft(getUserColor(getActivity(), mUserId));
+		mProfileNameContainer.drawStart(getUserColor(getActivity(), mUserId));
 	}
 
 	@Override

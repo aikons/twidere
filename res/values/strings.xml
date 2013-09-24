@@ -67,6 +67,7 @@
 	<string name="open_source_license">Open source license</string>
 	<string name="license_summary">Twidere is licensed under GPLv3.</string>
 	<string name="api">API</string>
+	<string name="default_api_settings">Default API settings</string>
 	<string name="consumer_key">Consumer key</string>
 	<string name="consumer_key_summary">Consumer key for new logged accounts in OAuth/xAuth mode</string>
 	<string name="consumer_secret">Consumer secret</string>
@@ -98,6 +99,7 @@
 	<string name="time_source"><xliff:g id="time">%1$s</xliff:g>, via <xliff:g id="source">%2$s</xliff:g></string>
 	<string name="source">via <xliff:g id="source">%s</xliff:g></string>
 	<string name="filter">Filter</string>
+	<string name="filters">Filters</string>
 	<string name="users">Users</string>
 	<string name="keywords">Keywords</string>
 	<string name="sources">Sources</string>
@@ -205,7 +207,7 @@
 	<string name="item_1_hour">1 hour</string>
 	<string name="item_2_hours">2 hours</string>
 	<string name="item_4_hours">4 hours</string>
-	<string name="image_preview_display_option">Image preview display option</string>
+	<string name="display_image_preview">Display image preview</string>
 	<string name="solid_color_background">Solid color background</string>
 	<string name="solid_color_background_summary">This may be useful if screen of your device is AMOLED.</string>
 	<string name="following_you">Following you</string>
@@ -475,10 +477,15 @@
 	<string name="account_delete_confirm_message">This account will be deleted from Twidere.</string>
 	<string name="for_advanced_users_only">FOR ADVANCED USERS ONLY!</string>
 	<string name="theme">Theme</string>
-	<string name="theme_twidere">Twidere</string>
 	<string name="theme_dark">Dark</string>
 	<string name="theme_light">Light</string>
 	<string name="theme_light_darkactionbar">Light with dark ActionBar</string>
 	<string name="settings_interface">Interface</string>
+	<string name="no_rule">No rule</string>
+	<string name="enable_in_mentions">Enable in mentions</string>
+	<string name="enable_in_home_timeline">Enable in home timeline</string>
+	<string name="enable_for_rts">Enable for RTs</string>
+	<string name="safety">Safety</string>
+	<string name="updating_status_notification">Updating status…</string>
 
 </resources>

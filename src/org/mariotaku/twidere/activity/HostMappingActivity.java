@@ -24,6 +24,7 @@ import static android.text.TextUtils.isEmpty;
 import java.util.Map;
 
 import org.mariotaku.twidere.R;
+import org.mariotaku.twidere.adapter.ArrayAdapter;
 import org.mariotaku.twidere.fragment.BaseDialogFragment;
 import org.mariotaku.twidere.fragment.ProgressDialogFragment;
 import org.mariotaku.twidere.util.AsyncTask;
@@ -42,22 +43,19 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.SparseBooleanArray;
+import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
-import android.widget.AdapterView.OnItemLongClickListener;
-import android.widget.BaseAdapter;
+import android.widget.AbsListView.MultiChoiceModeListener;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
-import de.keyboardsurfer.android.widget.crouton.Crouton;
-import de.keyboardsurfer.android.widget.crouton.CroutonStyle;
 
-public class HostMappingActivity extends BaseActivity implements OnItemClickListener, OnItemLongClickListener {
+public class HostMappingActivity extends BaseSupportActivity implements MultiChoiceModeListener {
 
 	private ListView mListView;
 	private HostMappingAdapter mAdapter;
@@ -66,23 +64,51 @@ public class HostMappingActivity extends BaseActivity implements OnItemClickList
 	private DialogFragment mDialogFragment;
 
 	@Override
+	public boolean onActionItemClicked(final ActionMode mode, final MenuItem item) {
+		switch (item.getItemId()) {
+			case MENU_DELETE: {
+				final SharedPreferences.Editor editor = mPreferences.edit();
+				final SparseBooleanArray array = mListView.getCheckedItemPositions();
+				if (array == null) return false;
+				final int size = array.size();
+				for (int i = 0; i < size; i++) {
+					if (array.valueAt(i)) {
+						editor.remove(mAdapter.getItem(i));
+					}
+				}
+				editor.apply();
+				reload();
+				break;
+			}
+			default: {
+				return false;
+			}
+		}
+		mode.finish();
+		return true;
+	}
+
+	@Override
+	public boolean onCreateActionMode(final ActionMode mode, final Menu menu) {
+		getMenuInflater().inflate(R.menu.action_multi_select_items, menu);
+		return true;
+	}
+
+	@Override
 	public boolean onCreateOptionsMenu(final Menu menu) {
 		getMenuInflater().inflate(R.menu.menu_host_mapping, menu);
 		return super.onCreateOptionsMenu(menu);
 	}
 
 	@Override
-	public void onItemClick(final AdapterView<?> adapter, final View v, final int position, final long id) {
-		Crouton.showText(this, R.string.longclick_to_delete, CroutonStyle.INFO);
+	public void onDestroyActionMode(final ActionMode mode) {
+
 	}
 
 	@Override
-	public boolean onItemLongClick(final AdapterView<?> adapter, final View view, final int position, final long id) {
-		final SharedPreferences.Editor editor = mPreferences.edit();
-		editor.remove(mAdapter.getItem(position));
-		final boolean ret = editor.commit();
-		reload();
-		return ret;
+	public void onItemCheckedStateChanged(final ActionMode mode, final int position, final long id,
+			final boolean checked) {
+		updateTitle(mode);
 	}
 
 	@Override
@@ -97,11 +123,16 @@ public class HostMappingActivity extends BaseActivity implements OnItemClickList
 				break;
 			case MENU_IMPORT_FROM:
 				final Intent intent = new Intent(INTENT_ACTION_PICK_FILE);
-				intent.setClass(this, FilePickerActivity.class);
+				intent.setClass(this, FileSelectorActivity.class);
 				startActivityForResult(intent, REQUEST_PICK_FILE);
 				break;
 		}
 		return super.onOptionsItemSelected(item);
+	}
+
+	@Override
+	public boolean onPrepareActionMode(final ActionMode mode, final Menu menu) {
+		return true;
 	}
 
 	public void reload() {
@@ -129,14 +160,20 @@ public class HostMappingActivity extends BaseActivity implements OnItemClickList
 	protected void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		mPreferences = getSharedPreferences(HOST_MAPPING_PREFERENCES_NAME, Context.MODE_PRIVATE);
-		setContentView(R.layout.base_list);
+		setContentView(android.R.layout.list_content);
 		getActionBar().setDisplayHomeAsUpEnabled(true);
 		mAdapter = new HostMappingAdapter(this);
 		mListView = (ListView) findViewById(android.R.id.list);
 		mListView.setAdapter(mAdapter);
-		mListView.setOnItemClickListener(this);
-		mListView.setOnItemLongClickListener(this);
+		mListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE_MODAL);
+		mListView.setMultiChoiceModeListener(this);
 		reload();
+	}
+
+	private void updateTitle(final ActionMode mode) {
+		if (mListView == null) return;
+		final int count = mListView.getCheckedItemCount();
+		mode.setTitle(getResources().getQuantityString(R.plurals.Nitems_selected, count, count));
 	}
 
 	public static class AddMappingDialogFragment extends BaseDialogFragment implements DialogInterface.OnClickListener {
@@ -197,38 +234,18 @@ public class HostMappingActivity extends BaseActivity implements OnItemClickList
 
 	}
 
-	static class HostMappingAdapter extends BaseAdapter {
+	static class HostMappingAdapter extends ArrayAdapter<String> {
 
 		private final SharedPreferences mPreferences;
-		private final LayoutInflater mInflater;
-		private Map<String, ?> mData;
-		private String[] mKeys;
 
 		public HostMappingAdapter(final Context context) {
+			super(context, android.R.layout.simple_list_item_activated_2);
 			mPreferences = context.getSharedPreferences(HOST_MAPPING_PREFERENCES_NAME, Context.MODE_PRIVATE);
-			mInflater = LayoutInflater.from(context);
-		}
-
-		@Override
-		public int getCount() {
-			return mData != null ? mData.size() : 0;
-		}
-
-		@Override
-		public String getItem(final int position) {
-			return mKeys.length > 0 && position < mKeys.length ? mKeys[position] : null;
-		}
-
-		@Override
-		public long getItemId(final int position) {
-			final Object obj = getItem(position);
-			return obj != null ? obj.hashCode() : 0;
 		}
 
 		@Override
 		public View getView(final int position, final View convertView, final ViewGroup parent) {
-			final View view = convertView != null ? convertView : mInflater.inflate(
-					android.R.layout.simple_list_item_2, null);
+			final View view = super.getView(position, convertView, parent);
 			final TextView text1 = (TextView) view.findViewById(android.R.id.text1);
 			final TextView text2 = (TextView) view.findViewById(android.R.id.text2);
 			final String key = getItem(position);
@@ -238,9 +255,9 @@ public class HostMappingActivity extends BaseActivity implements OnItemClickList
 		}
 
 		public void reload() {
-			mData = mPreferences.getAll();
-			mKeys = mData.keySet().toArray(new String[mData.size()]);
-			notifyDataSetChanged();
+			clear();
+			final Map<String, ?> all = mPreferences.getAll();
+			addAll(all.keySet());
 		}
 
 	}

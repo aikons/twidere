@@ -25,7 +25,6 @@ import static org.mariotaku.twidere.util.Utils.configBaseAdapter;
 import static org.mariotaku.twidere.util.Utils.formatSameDayTime;
 import static org.mariotaku.twidere.util.Utils.getAccountColor;
 import static org.mariotaku.twidere.util.Utils.getAccountScreenName;
-import static org.mariotaku.twidere.util.Utils.getImagePreviewDisplayOptionInt;
 import static org.mariotaku.twidere.util.Utils.getNameDisplayOptionInt;
 import static org.mariotaku.twidere.util.Utils.getStatusBackground;
 import static org.mariotaku.twidere.util.Utils.getUserColor;
@@ -72,22 +71,25 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 	private final SQLiteDatabase mDatabase;
 	private final Map<View, String> mLoadingViewsMap = new HashMap<View, String>();
 
-	private boolean mDisplayProfileImage, mShowAccountColor, mShowAbsoluteTime, mGapDisallowed, mMultiSelectEnabled,
+	private MenuButtonClickListener mListener;
+	private boolean mDisplayProfileImage, mDisplayImagePreview, mShowAccountColor, mShowAbsoluteTime, mGapDisallowed,
 			mMentionsHighlightDisabled, mDisplaySensitiveContents, mIndicateMyStatusDisabled, mLinkHighlightingEnabled,
 			mIsLastItemFiltered, mFiltersEnabled;
 	private float mTextSize;
-	private int mNameDisplayOption, mImagePreviewDisplayOption, mLinkHighlightStyle;
+	private int mNameDisplayOption, mLinkHighlightStyle;
 	private boolean mFilterIgnoreSource, mFilterIgnoreScreenName, mFilterIgnoreTextHtml, mFilterIgnoreTextPlain;
+	private int mMaxAnimationPosition;
 
 	public ParcelableStatusesAdapter(final Context context) {
 		super(context, R.layout.status_list_item);
 		mContext = context;
-		final TwidereApplication application = TwidereApplication.getInstance(context);
-		mMultiSelectManager = application.getMultiSelectManager();
-		mImageLoader = application.getImageLoaderWrapper();
-		mDatabase = application.getSQLiteDatabase();
+		final TwidereApplication app = TwidereApplication.getInstance(context);
+		mMultiSelectManager = app.getMultiSelectManager();
+		mImageLoader = app.getImageLoaderWrapper();
+		mDatabase = app.getSQLiteDatabase();
 		mLinkify = new TwidereLinkify(new OnLinkClickHandler(mContext));
 		configBaseAdapter(context, this);
+		setMaxAnimationPosition(-1);
 	}
 
 	@Override
@@ -138,6 +140,10 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 			holder = (StatusViewHolder) tag;
 		} else {
 			holder = new StatusViewHolder(view);
+			holder.profile_image.setOnClickListener(this);
+			holder.my_profile_image.setOnClickListener(this);
+			holder.image_preview.setOnClickListener(this);
+			holder.item_menu.setOnClickListener(this);
 			view.setTag(holder);
 		}
 
@@ -159,20 +165,15 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 			if (mLinkHighlightingEnabled) {
 				holder.text.setText(Html.fromHtml(status.text_html));
 				mLinkify.applyAllLinks(holder.text, status.account_id, status.is_possibly_sensitive);
+				holder.text.setMovementMethod(null);
 			} else {
 				holder.text.setText(status.text_unescaped);
 			}
-			holder.text.setMovementMethod(null);
 
 			if (mShowAccountColor) {
 				holder.setAccountColor(getAccountColor(mContext, status.account_id));
 			}
 
-			if (mMultiSelectEnabled) {
-				holder.setSelected(mMultiSelectManager.isStatusSelected(status.id));
-			} else {
-				holder.setSelected(false);
-			}
 			final String account_screen_name = getAccountScreenName(mContext, status.account_id);
 			final boolean is_mention = !TextUtils.isEmpty(status.text_plain)
 					&& status.text_plain.toLowerCase().contains('@' + account_screen_name.toLowerCase());
@@ -216,23 +217,25 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 				holder.profile_image.setVisibility(View.GONE);
 				holder.my_profile_image.setVisibility(View.GONE);
 			}
-			final boolean has_preview = mImagePreviewDisplayOption != IMAGE_PREVIEW_DISPLAY_OPTION_CODE_NONE
-					&& status.has_media && status.image_preview_url != null;
+			final boolean has_preview = mDisplayImagePreview && status.has_media && status.image_preview_url != null;
 			holder.image_preview_container.setVisibility(has_preview ? View.VISIBLE : View.GONE);
 			if (has_preview) {
-				holder.setImagePreviewDisplayOption(mImagePreviewDisplayOption);
 				if (status.is_possibly_sensitive && !mDisplaySensitiveContents) {
-					holder.image_preview.setImageResource(R.drawable.image_preview_nsfw);
+					holder.image_preview.setImageDrawable(null);
+					holder.image_preview.setBackgroundResource(R.drawable.image_preview_nsfw);
 					holder.image_preview_progress.setVisibility(View.GONE);
 				} else if (!status.image_preview_url.equals(mLoadingViewsMap.get(holder.image_preview))) {
+					holder.image_preview.setBackgroundResource(0);
 					mImageLoader.displayPreviewImage(holder.image_preview, status.image_preview_url, this);
 				}
 				holder.image_preview.setTag(position);
 			}
+			holder.item_menu.setTag(position);
 		}
-		holder.profile_image.setOnClickListener(mMultiSelectEnabled ? null : this);
-		holder.my_profile_image.setOnClickListener(mMultiSelectEnabled ? null : this);
-		holder.image_preview.setOnClickListener(mMultiSelectEnabled ? null : this);
+		if (position > mMaxAnimationPosition) {
+			view.startAnimation(holder.item_animation);
+			mMaxAnimationPosition = position;
+		}
 		return view;
 	}
 
@@ -243,13 +246,15 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 
 	@Override
 	public void onClick(final View view) {
-		if (mMultiSelectEnabled) return;
+		if (mMultiSelectManager.isActive()) return;
 		final Object tag = view.getTag();
-		final ParcelableStatus status = tag instanceof Integer ? getStatus((Integer) tag) : null;
-		if (status == null) return;
+		final int position = tag instanceof Integer ? (Integer) tag : -1;
+		if (position == -1) return;
 		switch (view.getId()) {
 			case R.id.image_preview: {
-				final PreviewImage spec = PreviewImage.getAllAvailableImage(status.image_original_url, true);
+				final ParcelableStatus status = getStatus(position);
+				if (status == null) return;
+				final PreviewImage spec = PreviewImage.getAllAvailableImage(status.image_original_url);
 				if (spec != null) {
 					openImage(mContext, spec.image_full_url, spec.image_original_url, status.is_possibly_sensitive);
 				} else {
@@ -259,9 +264,16 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 			}
 			case R.id.my_profile_image:
 			case R.id.profile_image: {
+				final ParcelableStatus status = getStatus(position);
+				if (status == null) return;
 				if (mContext instanceof Activity) {
 					openUserProfile((Activity) mContext, status.account_id, status.user_id, status.user_screen_name);
 				}
+				break;
+			}
+			case R.id.item_menu: {
+				if (position == -1 || mListener == null) return;
+				mListener.onMenuButtonClick(view, position, getItemId(position));
 				break;
 			}
 		}
@@ -335,6 +347,13 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 	}
 
 	@Override
+	public void setDisplayImagePreview(final boolean display) {
+		if (display == mDisplayImagePreview) return;
+		mDisplayImagePreview = display;
+		notifyDataSetChanged();
+	}
+
+	@Override
 	public void setDisplayProfileImage(final boolean display) {
 		if (display == mDisplayProfileImage) return;
 		mDisplayProfileImage = display;
@@ -375,14 +394,6 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 	}
 
 	@Override
-	public void setImagePreviewDisplayOption(final String option) {
-		final int option_int = getImagePreviewDisplayOptionInt(option);
-		if (option_int == mImagePreviewDisplayOption) return;
-		mImagePreviewDisplayOption = option_int;
-		notifyDataSetChanged();
-	}
-
-	@Override
 	public void setIndicateMyStatusDisabled(final boolean disable) {
 		if (mIndicateMyStatusDisabled == disable) return;
 		mIndicateMyStatusDisabled = disable;
@@ -407,6 +418,11 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 	}
 
 	@Override
+	public void setMaxAnimationPosition(final int position) {
+		mMaxAnimationPosition = position;
+	}
+
+	@Override
 	public void setMentionsHightlightDisabled(final boolean disable) {
 		if (disable == mMentionsHighlightDisabled) return;
 		mMentionsHighlightDisabled = disable;
@@ -414,10 +430,8 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 	}
 
 	@Override
-	public void setMultiSelectEnabled(final boolean multi) {
-		if (mMultiSelectEnabled == multi) return;
-		mMultiSelectEnabled = multi;
-		notifyDataSetChanged();
+	public void setMenuButtonClickListener(final MenuButtonClickListener listener) {
+		mListener = listener;
 	}
 
 	@Override

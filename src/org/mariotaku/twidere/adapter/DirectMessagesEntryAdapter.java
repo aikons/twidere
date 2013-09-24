@@ -40,6 +40,7 @@ import org.mariotaku.twidere.adapter.iface.IBaseAdapter;
 import org.mariotaku.twidere.app.TwidereApplication;
 import org.mariotaku.twidere.provider.TweetStore.DirectMessages.ConversationsEntry;
 import org.mariotaku.twidere.util.ImageLoaderWrapper;
+import org.mariotaku.twidere.util.MultiSelectManager;
 import org.mariotaku.twidere.view.holder.DirectMessageEntryViewHolder;
 
 import android.app.Activity;
@@ -52,15 +53,20 @@ import android.view.ViewGroup;
 
 public class DirectMessagesEntryAdapter extends SimpleCursorAdapter implements IBaseAdapter, OnClickListener {
 
-	private boolean mDisplayProfileImage, mShowAccountColor, mShowAbsoluteTime, mMultiSelectEnabled;
 	private final ImageLoaderWrapper mLazyImageLoader;
-	private float mTextSize;
+	private final MultiSelectManager mMultiSelectManager;
 
+	private boolean mDisplayProfileImage, mShowAccountColor, mShowAbsoluteTime;
+	private float mTextSize;
 	private int mNameDisplayOption;
 
+	private MenuButtonClickListener mListener;
+
 	public DirectMessagesEntryAdapter(final Context context) {
-		super(context, R.layout.direct_messages_entry_item, null, new String[0], new int[0], 0);
-		mLazyImageLoader = TwidereApplication.getInstance(context).getImageLoaderWrapper();
+		super(context, R.layout.direct_messages_entry_list_item, null, new String[0], new int[0], 0);
+		final TwidereApplication app = TwidereApplication.getInstance(context);
+		mMultiSelectManager = app.getMultiSelectManager();
+		mLazyImageLoader = app.getImageLoaderWrapper();
 		configBaseAdapter(context, this);
 	}
 
@@ -148,7 +154,7 @@ public class DirectMessagesEntryAdapter extends SimpleCursorAdapter implements I
 
 	@Override
 	public void onClick(final View view) {
-		if (mMultiSelectEnabled) return;
+		if (mMultiSelectManager.isActive()) return;
 		final Object tag = view.getTag();
 		final int position = tag instanceof Integer ? (Integer) tag : -1;
 		if (position == -1) return;
@@ -160,6 +166,11 @@ public class DirectMessagesEntryAdapter extends SimpleCursorAdapter implements I
 					final String screen_name = getScreenName(position);
 					openUserProfile((Activity) mContext, account_id, user_id, screen_name);
 				}
+				break;
+			}
+			case R.id.item_menu: {
+				if (position == -1 || mListener == null) return;
+				mListener.onMenuButtonClick(view, position, getItemId(position));
 				break;
 			}
 		}
@@ -174,10 +185,8 @@ public class DirectMessagesEntryAdapter extends SimpleCursorAdapter implements I
 	}
 
 	@Override
-	public void setMultiSelectEnabled(final boolean multi) {
-		if (mMultiSelectEnabled == multi) return;
-		mMultiSelectEnabled = multi;
-		notifyDataSetChanged();
+	public void setMenuButtonClickListener(final MenuButtonClickListener listener) {
+		mListener = listener;
 	}
 
 	@Override
