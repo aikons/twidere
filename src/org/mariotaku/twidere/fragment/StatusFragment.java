@@ -654,6 +654,11 @@ public class StatusFragment extends ParcelableStatusesListFragment implements On
 	}
 
 	@Override
+	public void onItemsCleared() {
+
+	}
+
+	@Override
 	public void onItemSelected(final AdapterView<?> parent, final View view, final int position, final long id) {
 		final int count = mImagePreviewAdapter.getCount();
 		if (count <= 1) {
@@ -713,20 +718,16 @@ public class StatusFragment extends ParcelableStatusesListFragment implements On
 	}
 
 	@Override
-	public void scrollToTop() {
-		if (mListView == null) return;
+	public boolean scrollToTop() {
+		if (mListView == null) return false;
 		final IStatusesAdapter<List<ParcelableStatus>> adapter = getListAdapter();
 		Utils.scrollListToPosition(mListView, adapter.getCount() + mListView.getFooterViewsCount() - 1, 0);
+		return true;
 	}
 
 	@Override
 	protected String[] getSavedStatusesFileArgs() {
 		return null;
-	}
-
-	@Override
-	protected void onReachedBottom() {
-
 	}
 
 	// @Override
@@ -747,6 +748,15 @@ public class StatusFragment extends ParcelableStatusesListFragment implements On
 	// }
 	// super.setItemSelected(status, position, selected);
 	// }
+
+	@Override
+	protected void onReachedBottom() {
+
+	}
+
+	@Override
+	protected void setItemSelected(final ParcelableStatus status, final int position, final boolean selected) {
+	}
 
 	@Override
 	protected void setListHeaderFooters(final ListView list) {

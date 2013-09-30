@@ -42,6 +42,7 @@ import static org.mariotaku.twidere.util.Utils.openUserBlocks;
 import static org.mariotaku.twidere.util.Utils.openUserFavorites;
 import static org.mariotaku.twidere.util.Utils.openUserFollowers;
 import static org.mariotaku.twidere.util.Utils.openUserFriends;
+import static org.mariotaku.twidere.util.Utils.openUserListMemberships;
 import static org.mariotaku.twidere.util.Utils.openUserLists;
 import static org.mariotaku.twidere.util.Utils.openUserMentions;
 import static org.mariotaku.twidere.util.Utils.openUserProfile;
@@ -153,7 +154,7 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 
 	private AsyncTwitterWrapper mTwitterWrapper;
 
-	private PopupMenu mPopupMenu;
+	private PopupMenu mFollowPopupMenu, mOptionsPopupMenu;
 
 	private final BroadcastReceiver mStatusReceiver = new BroadcastReceiver() {
 
@@ -358,12 +359,13 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 		mAdapter.add(new FavoritesAction(1));
 		mAdapter.add(new UserMentionsAction(2));
 		mAdapter.add(new UserListsAction(3));
+		mAdapter.add(new UserListMembershipsAction(4));
 		if (user_is_me) {
-			mAdapter.add(new SavedSearchesAction(4));
+			mAdapter.add(new SavedSearchesAction(11));
 			if (user.is_protected) {
-				mAdapter.add(new IncomingFriendshipsAction(5));
+				mAdapter.add(new IncomingFriendshipsAction(12));
 			}
-			mAdapter.add(new UserBlocksAction(6));
+			mAdapter.add(new UserBlocksAction(13));
 		}
 		mAdapter.notifyDataSetChanged();
 		if (!user.is_cache) {
@@ -478,9 +480,9 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 				} else {
 					if (mUser.is_follow_request_sent) return;
 					if (mFriendship.isSourceFollowingTarget()) {
-						mPopupMenu = PopupMenu.getInstance(getActivity(), view);
-						mPopupMenu.inflate(R.menu.action_user_profile_follow);
-						mPopupMenu.setOnMenuItemClickListener(new OnMenuItemClickListener() {
+						mFollowPopupMenu = PopupMenu.getInstance(getActivity(), view);
+						mFollowPopupMenu.inflate(R.menu.action_user_profile_follow);
+						mFollowPopupMenu.setOnMenuItemClickListener(new OnMenuItemClickListener() {
 
 							@Override
 							public boolean onMenuItemClick(final MenuItem item) {
@@ -495,7 +497,7 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 								return false;
 							}
 						});
-						mPopupMenu.show();
+						mFollowPopupMenu.show();
 					} else {
 						mFollowProgress.setVisibility(View.VISIBLE);
 						mEditFollowButton.setVisibility(View.GONE);
@@ -536,9 +538,9 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 			}
 			case R.id.more_options: {
 				if (mUser == null) return;
-				mPopupMenu = PopupMenu.getInstance(getActivity(), view);
-				mPopupMenu.inflate(R.menu.action_user_profile);
-				final Menu menu = mPopupMenu.getMenu();
+				mOptionsPopupMenu = PopupMenu.getInstance(getActivity(), view);
+				mOptionsPopupMenu.inflate(R.menu.action_user_profile);
+				final Menu menu = mOptionsPopupMenu.getMenu();
 				if (mUser.id != mAccountId) {
 					if (mFriendship == null) return;
 					final MenuItem blockItem = menu.findItem(MENU_BLOCK);
@@ -570,8 +572,8 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 				extras.putParcelable(INTENT_KEY_USER, mUser);
 				intent.putExtras(extras);
 				addIntentToMenu(getActivity(), menu, intent);
-				mPopupMenu.setOnMenuItemClickListener(this);
-				mPopupMenu.show();
+				mOptionsPopupMenu.setOnMenuItemClickListener(this);
+				mOptionsPopupMenu.show();
 				break;
 			}
 			case R.id.name_container: {
@@ -926,6 +928,23 @@ public class UserProfileFragment extends BaseSupportListFragment implements OnCl
 			openUserBlocks(getActivity(), mAccountId);
 		}
 
+	}
+
+	final class UserListMembershipsAction extends ListAction {
+		public UserListMembershipsAction(final int order) {
+			super(order);
+		}
+
+		@Override
+		public String getName() {
+			return getString(R.string.lists_following_user);
+		}
+
+		@Override
+		public void onClick() {
+			if (mUser == null) return;
+			openUserListMemberships(getActivity(), mAccountId, mUser.id, mUser.screen_name);
+		}
 	}
 
 	final class UserListsAction extends ListAction {

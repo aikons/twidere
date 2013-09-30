@@ -32,6 +32,7 @@ import org.mariotaku.twidere.util.ThemeUtils;
 
 import uk.co.senab.actionbarpulltorefresh.library.PullToRefreshAttacher;
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.os.Bundle;
 
 @SuppressLint("Registered")
@@ -124,6 +125,16 @@ public class BaseSupportActivity extends BaseSupportThemedActivity implements Co
 
 	public void setRefreshing(final boolean refreshing) {
 		mPullToRefreshAttacher.setRefreshing(refreshing);
+	}
+
+	@Override
+	public void startActivity(final Intent intent) {
+		super.startActivity(intent);
+	}
+
+	@Override
+	public void startActivityForResult(final Intent intent, final int requestCode) {
+		super.startActivityForResult(intent, requestCode);
 	}
 
 	public void updateRefreshingState() {

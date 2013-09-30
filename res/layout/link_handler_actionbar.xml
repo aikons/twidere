@@ -6,7 +6,7 @@
 	android:layout_height="match_parent"
 	android:gravity="center_vertical"
 	android:orientation="vertical"
-	android:paddingLeft="4dp">
+	android:padding="4dp">
 
 	<org.mariotaku.twidere.view.ActionBarTitleView
 		android:id="@+id/actionbar_title"
@@ -19,7 +19,6 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:singleLine="true"
-		android:text="@string/quote_protected_tweet_notice"
 		android:visibility="gone"/>
 
 </LinearLayout>

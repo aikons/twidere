@@ -345,11 +345,13 @@ public class AsyncTwitterWrapper extends TwitterWrapper {
 
 	public int updateStatus(final long[] account_ids, final String content, final ParcelableLocation location,
 			final Uri image_uri, final long in_reply_to, final boolean is_possibly_sensitive, final boolean delete_image) {
-//		final UpdateStatusTask task = new UpdateStatusTask(account_ids, content, location, image_uri, in_reply_to,
-//				is_possibly_sensitive, delete_image);
-//		return mAsyncTaskManager.add(task, true);
+		// final UpdateStatusTask task = new UpdateStatusTask(account_ids,
+		// content, location, image_uri, in_reply_to,
+		// is_possibly_sensitive, delete_image);
+		// return mAsyncTaskManager.add(task, true);
 		final Intent intent = new Intent(mContext, UpdateStatusService.class);
-		intent.putExtra(INTENT_KEY_STATUS, new ParcelableStatusUpdate(account_ids, content, location, image_uri, in_reply_to, is_possibly_sensitive, delete_image));
+		intent.putExtra(INTENT_KEY_STATUS, new ParcelableStatusUpdate(account_ids, content, location, image_uri,
+				in_reply_to, is_possibly_sensitive, delete_image));
 		mContext.startService(intent);
 		return 0;
 	}
@@ -2294,7 +2296,7 @@ public class AsyncTwitterWrapper extends TwitterWrapper {
 			}
 			if (result.isEmpty()) {
 				saveDrafts(failed_account_ids);
-				mMessagesManager.showErrorMessage(R.string.sending_status,
+				mMessagesManager.showErrorMessage(R.string.updating_status,
 						mContext.getString(R.string.no_account_selected), false);
 			} else if (failed) {
 				// If the status is a duplicate, there's no need to save it to
@@ -2304,7 +2306,7 @@ public class AsyncTwitterWrapper extends TwitterWrapper {
 					mMessagesManager.showErrorMessage(mContext.getString(R.string.status_is_duplicate), false);
 				} else {
 					saveDrafts(failed_account_ids);
-					mMessagesManager.showErrorMessage(R.string.sending_status, exception, true);
+					mMessagesManager.showErrorMessage(R.string.updating_status, exception, true);
 				}
 			} else {
 				mMessagesManager.showOkMessage(R.string.status_updated, false);
@@ -2335,7 +2337,8 @@ public class AsyncTwitterWrapper extends TwitterWrapper {
 			final String title = mContext.getString(R.string.tweet_not_sent);
 			final String message = mContext.getString(R.string.tweet_not_sent_summary);
 			final Intent intent = new Intent(INTENT_ACTION_DRAFTS);
-			final Notification notification = buildNotification(title, message, R.drawable.ic_stat_tweet, intent, null);
+			final Notification notification = buildNotification(title, message, R.drawable.ic_stat_twitter, intent,
+					null);
 			mNotificationManager.notify(NOTIFICATION_ID_DRAFTS, notification);
 		}
 

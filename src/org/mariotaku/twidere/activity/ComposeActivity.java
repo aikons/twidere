@@ -27,7 +27,6 @@ import static org.mariotaku.twidere.util.ParseUtils.parseString;
 import static org.mariotaku.twidere.util.Utils.addIntentToMenu;
 import static org.mariotaku.twidere.util.Utils.copyStream;
 import static org.mariotaku.twidere.util.Utils.formatSameDayTime;
-import static org.mariotaku.twidere.util.Utils.getAccountColor;
 import static org.mariotaku.twidere.util.Utils.getAccountColors;
 import static org.mariotaku.twidere.util.Utils.getAccountIds;
 import static org.mariotaku.twidere.util.Utils.getAccountName;
@@ -548,8 +547,7 @@ public class ComposeActivity extends BaseSupportDialogActivity implements TextWa
 		if (savedInstanceState != null) {
 			// Restore from previous saved state
 			mAccountIds = savedInstanceState.getLongArray(INTENT_KEY_ACCOUNT_IDS);
-			mAttachedImageType = savedInstanceState.getInt(INTENT_KEY_ATTACHED_IMAGE_TYPE,
-					ATTACHED_IMAGE_TYPE_NONE);
+			mAttachedImageType = savedInstanceState.getInt(INTENT_KEY_ATTACHED_IMAGE_TYPE, ATTACHED_IMAGE_TYPE_NONE);
 			mIsPossiblySensitive = savedInstanceState.getBoolean(INTENT_KEY_IS_POSSIBLY_SENSITIVE);
 			mImageUri = savedInstanceState.getParcelable(INTENT_KEY_IMAGE_URI);
 			mInReplyToStatus = savedInstanceState.getParcelable(INTENT_KEY_STATUS);
@@ -1112,7 +1110,6 @@ public class ComposeActivity extends BaseSupportDialogActivity implements TextWa
 				mHolder.screen_name.setVisibility(View.VISIBLE);
 			}
 
-			mHolder.setAccountColor(getAccountColor(getActivity(), status.account_id));
 			final String retweeted_by_name = status.retweeted_by_name;
 			final String retweeted_by_screen_name = status.retweeted_by_screen_name;
 
