@@ -101,6 +101,7 @@
 	<string name="filter">Filter</string>
 	<string name="filters">Filters</string>
 	<string name="users">Users</string>
+	<string name="user">User</string>
 	<string name="keywords">Keywords</string>
 	<string name="sources">Sources</string>
 	<string name="content">Content</string>
@@ -142,7 +143,7 @@
 	<string name="blocked_users">Blocked users</string>
 	<string name="set_as_default">Set as default</string>
 	<string name="search_users">Search Users</string>
-	<string name="search_tweets">Search Tweets</string>
+	<string name="search_statuses">Search Tweets</string>
 	<string name="created_at">Created at</string>
 	<string name="search_hint">Search tweets or users</string>
 	<string name="remember_position">Remember position</string>
@@ -473,6 +474,7 @@
 	<string name="fast_image_loading">Fast image loading</string>
 	<string name="fast_image_loading_summary">Enable to make images load faster, disable this if some image can\'t be displayed.</string>
 	<string name="select_user_list">Select user list</string>
+	<string name="select_user">Select user</string>
 	<string name="created_by">Created by <xliff:g id="created_by">%s</xliff:g></string>
 	<string name="add_to_list">Add to list</string>
 	<string name="account_delete_confirm_title">Delete account</string>
@@ -490,5 +492,9 @@
 	<string name="safety">Safety</string>
 	<string name="updating_status_notification">Sending tweet…</string>
 	<string name="name_with_nickname"><xliff:g id="name">%1$s</xliff:g> (<xliff:g id="nickname">%2$s</xliff:g>)</string>
+	<string name="query">Query</string>
+	<string name="nickname_only">Nickname only</string>
+	<string name="nickname_only_summary">Replace user name with nickname when available</string>
+	<string name="input_text">Input text</string>
 
 </resources>
