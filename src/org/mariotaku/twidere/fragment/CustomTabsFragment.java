@@ -23,6 +23,7 @@ import static org.mariotaku.twidere.util.CustomTabUtils.getConfiguraionMap;
 import static org.mariotaku.twidere.util.CustomTabUtils.getTabIconDrawable;
 import static org.mariotaku.twidere.util.CustomTabUtils.getTabIconObject;
 import static org.mariotaku.twidere.util.CustomTabUtils.getTabTypeName;
+import static org.mariotaku.twidere.util.CustomTabUtils.isTabAdded;
 
 import android.app.Activity;
 import android.app.LoaderManager.LoaderCallbacks;
@@ -59,6 +60,7 @@ import org.mariotaku.querybuilder.Columns.Column;
 import org.mariotaku.querybuilder.RawItemArray;
 import org.mariotaku.querybuilder.Where;
 import org.mariotaku.twidere.R;
+import org.mariotaku.twidere.activity.CustomTabEditorActivity;
 import org.mariotaku.twidere.graphic.DropShadowDrawable;
 import org.mariotaku.twidere.model.CustomTabConfiguration;
 import org.mariotaku.twidere.model.CustomTabConfiguration.CustomTabConfigurationComparator;
@@ -91,6 +93,7 @@ public class CustomTabsFragment extends BaseListFragment implements LoaderCallba
 			final String action = intent.getAction();
 			if (BROADCAST_TABS_UPDATED.equals(action)) {
 				getLoaderManager().restartLoader(0, null, CustomTabsFragment.this);
+				invalidateOptionsMenu();
 			}
 		}
 
@@ -129,12 +132,22 @@ public class CustomTabsFragment extends BaseListFragment implements LoaderCallba
 			case REQUEST_ADD_TAB: {
 				if (resultCode == Activity.RESULT_OK) {
 					final ContentValues values = new ContentValues();
-					values.put(Tabs.ARGUMENTS, data.getStringExtra(EXTRA_ARGUMENTS));
 					values.put(Tabs.NAME, data.getStringExtra(EXTRA_NAME));
-					values.put(Tabs.TYPE, data.getStringExtra(EXTRA_TYPE));
 					values.put(Tabs.ICON, data.getStringExtra(EXTRA_ICON));
+					values.put(Tabs.TYPE, data.getStringExtra(EXTRA_TYPE));
+					values.put(Tabs.ARGUMENTS, data.getStringExtra(EXTRA_ARGUMENTS));
 					values.put(Tabs.POSITION, mAdapter.getCount());
 					mResolver.insert(Tabs.CONTENT_URI, values);
+				}
+				break;
+			}
+			case REQUEST_EDIT_TAB: {
+				if (resultCode == Activity.RESULT_OK && data.hasExtra(EXTRA_ID)) {
+					final ContentValues values = new ContentValues();
+					values.put(Tabs.NAME, data.getStringExtra(EXTRA_NAME));
+					values.put(Tabs.ICON, data.getStringExtra(EXTRA_ICON));
+					final String where = String.format("%s = %d", Tabs._ID, data.getLongExtra(EXTRA_ID, -1));
+					mResolver.update(Tabs.CONTENT_URI, values, where, null);
 				}
 				break;
 			}
@@ -173,6 +186,19 @@ public class CustomTabsFragment extends BaseListFragment implements LoaderCallba
 			final boolean checked) {
 		final int count = mListView.getCheckedItemCount();
 		mode.setTitle(getResources().getQuantityString(R.plurals.Nitems_selected, count, count));
+	}
+
+	@Override
+	public void onListItemClick(final ListView l, final View v, final int position, final long id) {
+		final Cursor c = mAdapter.getCursor();
+		c.moveToPosition(position);
+		final Intent intent = new Intent(INTENT_ACTION_EDIT_TAB);
+		intent.setClass(getActivity(), CustomTabEditorActivity.class);
+		intent.putExtra(EXTRA_ID, c.getLong(c.getColumnIndex(Tabs._ID)));
+		intent.putExtra(EXTRA_TYPE, c.getString(c.getColumnIndex(Tabs.TYPE)));
+		intent.putExtra(EXTRA_NAME, c.getString(c.getColumnIndex(Tabs.NAME)));
+		intent.putExtra(EXTRA_ICON, c.getString(c.getColumnIndex(Tabs.ICON)));
+		startActivityForResult(intent, REQUEST_EDIT_TAB);
 	}
 
 	@Override
@@ -216,9 +242,13 @@ public class CustomTabsFragment extends BaseListFragment implements LoaderCallba
 			for (final Entry<String, CustomTabConfiguration> entry : tabs) {
 				final String type = entry.getKey();
 				final CustomTabConfiguration conf = entry.getValue();
-				final Intent intent = new Intent(INTENT_ACTION_EDIT_CUSTOM_TAB);
+				final Intent intent = new Intent(INTENT_ACTION_ADD_TAB);
+				intent.setClass(getActivity(), CustomTabEditorActivity.class);
 				intent.putExtra(EXTRA_TYPE, type);
 				final MenuItem subItem = subMenu.add(conf.getDefaultTitle());
+				final boolean should_disable = conf.isSingleTab() && isTabAdded(getActivity(), type);
+				subItem.setVisible(!should_disable);
+				subItem.setEnabled(!should_disable);
 				subItem.setIcon(new DropShadowDrawable(res, res.getDrawable(conf.getDefaultIcon()), 2, 0x80000000));
 				subItem.setIntent(intent);
 			}
@@ -275,7 +305,7 @@ public class CustomTabsFragment extends BaseListFragment implements LoaderCallba
 			final String type = cursor.getString(mIndices.type);
 			final String name = cursor.getString(mIndices.name), type_name = getTabTypeName(context, type);
 			final String icon = cursor.getString(mIndices.icon);
-			holder.text1.setText(TextUtils.isEmpty(name) ? name : type_name);
+			holder.text1.setText(TextUtils.isEmpty(name) ? type_name : name);
 			holder.text2.setText(type_name);
 			final Drawable d = getTabIconDrawable(mContext, getTabIconObject(icon));
 			if (d != null) {
