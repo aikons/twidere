@@ -87,6 +87,11 @@ public class SettingsActivity extends BasePreferenceActivity {
 	}
 
 	@Override
+	protected boolean isValidFragment(final String fragmentName) {
+		return true;
+	}
+
+	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setIntent(getIntent().addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
