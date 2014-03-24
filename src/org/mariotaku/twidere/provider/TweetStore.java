@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.provider;
@@ -23,37 +23,33 @@ import android.content.ContentResolver;
 import android.net.Uri;
 import android.provider.BaseColumns;
 
-import org.mariotaku.querybuilder.Columns;
-import org.mariotaku.querybuilder.Columns.Column;
-import org.mariotaku.querybuilder.OrderBy;
-import org.mariotaku.querybuilder.SQLQueryBuilder;
-import org.mariotaku.querybuilder.Selectable;
-import org.mariotaku.querybuilder.Tables;
-import org.mariotaku.querybuilder.Where;
-import org.mariotaku.twidere.util.Utils;
-
-public final class TweetStore {
+public interface TweetStore {
 
 	public static final String AUTHORITY = "twidere";
 
-	private static final String TYPE_PRIMARY_KEY = "INTEGER PRIMARY KEY AUTOINCREMENT";
-	private static final String TYPE_INT = "INTEGER";
-	private static final String TYPE_INT_UNIQUE = "INTEGER UNIQUE";
-	private static final String TYPE_BOOLEAN = "INTEGER(1)";
-	private static final String TYPE_TEXT = "TEXT";
-	private static final String TYPE_TEXT_NOT_NULL = "TEXT NOT NULL";
+	public static final String TYPE_PRIMARY_KEY = "INTEGER PRIMARY KEY AUTOINCREMENT";
+	public static final String TYPE_INT = "INTEGER";
+	public static final String TYPE_INT_UNIQUE = "INTEGER UNIQUE";
+	public static final String TYPE_BOOLEAN = "INTEGER(1)";
+	public static final String TYPE_TEXT = "TEXT";
+	public static final String TYPE_TEXT_NOT_NULL = "TEXT NOT NULL";
 
 	public static final String CONTENT_PATH_NULL = "null_content";
+
+	public static final String CONTENT_PATH_DATABASE_READY = "database_ready";
 
 	public static final Uri BASE_CONTENT_URI = new Uri.Builder().scheme(ContentResolver.SCHEME_CONTENT)
 			.authority(AUTHORITY).build();
 
 	public static final Uri CONTENT_URI_NULL = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH_NULL);
 
+	public static final Uri CONTENT_URI_DATABASE_READY = Uri.withAppendedPath(BASE_CONTENT_URI,
+			CONTENT_PATH_DATABASE_READY);
+
 	public static final Uri[] STATUSES_URIS = new Uri[] { Statuses.CONTENT_URI, Mentions.CONTENT_URI,
 			CachedStatuses.CONTENT_URI };
 	public static final Uri[] CACHE_URIS = new Uri[] { CachedUsers.CONTENT_URI, CachedStatuses.CONTENT_URI,
-			CachedHashtags.CONTENT_URI };
+			CachedHashtags.CONTENT_URI, CachedTrends.Local.CONTENT_URI };
 	public static final Uri[] DIRECT_MESSAGES_URIS = new Uri[] { DirectMessages.Inbox.CONTENT_URI,
 			DirectMessages.Outbox.CONTENT_URI };
 
@@ -109,7 +105,7 @@ public final class TweetStore {
 		 * Token Secret of the account.<br>
 		 * Type: TEXT
 		 */
-		public static final String TOKEN_SECRET = "token_secret";
+		public static final String OAUTH_TOKEN_SECRET = "oauth_token_secret";
 
 		public static final String REST_BASE_URL = "rest_base_url";
 
@@ -119,7 +115,7 @@ public final class TweetStore {
 
 		public static final String SIGNING_OAUTH_BASE_URL = "signing_oauth_base_url";
 
-		public static final String USER_COLOR = "user_color";
+		public static final String COLOR = "color";
 
 		/**
 		 * Set to a non-zero integer if the account is activated. <br>
@@ -140,9 +136,9 @@ public final class TweetStore {
 		public static final String PROFILE_BANNER_URL = "profile_banner_url";
 
 		public static final String[] COLUMNS = new String[] { _ID, NAME, SCREEN_NAME, ACCOUNT_ID, AUTH_TYPE,
-				BASIC_AUTH_PASSWORD, OAUTH_TOKEN, TOKEN_SECRET, CONSUMER_KEY, CONSUMER_SECRET, REST_BASE_URL,
+				BASIC_AUTH_PASSWORD, OAUTH_TOKEN, OAUTH_TOKEN_SECRET, CONSUMER_KEY, CONSUMER_SECRET, REST_BASE_URL,
 				SIGNING_REST_BASE_URL, OAUTH_BASE_URL, SIGNING_OAUTH_BASE_URL, PROFILE_IMAGE_URL, PROFILE_BANNER_URL,
-				USER_COLOR, IS_ACTIVATED };
+				COLOR, IS_ACTIVATED };
 
 		public static final String[] TYPES = new String[] { TYPE_PRIMARY_KEY, TYPE_TEXT_NOT_NULL, TYPE_TEXT_NOT_NULL,
 				TYPE_INT_UNIQUE, TYPE_INT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT,
@@ -319,87 +315,29 @@ public final class TweetStore {
 
 			public static final String DEFAULT_SORT_ORDER = MESSAGE_TIMESTAMP + " ASC";
 
-			public static final String TABLE_NAME = "messages_conversation";
-			public static final String CONTENT_PATH = TABLE_NAME;
+			public static final String CONTENT_PATH_SEGMENT = "conversation";
+			public static final String CONTENT_PATH_SEGMENT_SCREEN_NAME = "conversation_screen_name";
 
-			public static final String TABLE_NAME_SCREEN_NAME = "messages_conversation_screen_name";
+			public static final String CONTENT_PATH = DirectMessages.CONTENT_PATH + "/" + CONTENT_PATH_SEGMENT;
+			public static final String CONTENT_PATH_SCREEN_NAME = DirectMessages.CONTENT_PATH + "/"
+					+ CONTENT_PATH_SEGMENT_SCREEN_NAME;
 
-			public static final String CONTENT_PATH_SCREEN_NAME = TABLE_NAME_SCREEN_NAME;
+			public static final Uri CONTENT_URI = Uri
+					.withAppendedPath(DirectMessages.CONTENT_URI, CONTENT_PATH_SEGMENT);
 
-			public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
-
-			public static final Uri CONTENT_URI_SCREEN_NAME = Uri.withAppendedPath(BASE_CONTENT_URI,
-					CONTENT_PATH_SCREEN_NAME);
-
-			public static final class QueryBuilder {
-
-				public static final String buildByConversationId(final String[] projection, final long account_id,
-						final long conversation_id, final String selection, final String sortOrder) {
-					final SQLQueryBuilder qb = new SQLQueryBuilder();
-					final Selectable select = Utils.getColumnsFromProjection(projection);
-					qb.select(select);
-					qb.from(new Tables(Inbox.TABLE_NAME));
-					final Where account_id_where = new Where(String.format("%s = %d", ACCOUNT_ID, account_id));
-					final Where sender_where = new Where(String.format("%s = %d", SENDER_ID, conversation_id))
-							.and(account_id_where);
-					final Where recipient_where = new Where(String.format("%s = %d", RECIPIENT_ID, conversation_id))
-							.and(account_id_where);
-					if (selection != null) {
-						qb.where(new Where(selection).and(sender_where));
-					} else {
-						qb.where(sender_where);
-					}
-					qb.union();
-					qb.select(select);
-					qb.from(new Tables(Outbox.TABLE_NAME));
-					if (selection != null) {
-						qb.where(new Where(selection).and(recipient_where));
-					} else {
-						qb.where(recipient_where);
-					}
-					qb.orderBy(new OrderBy(sortOrder != null ? sortOrder
-							: DirectMessages.Conversation.DEFAULT_SORT_ORDER));
-					return qb.build().getSQL();
-				}
-
-				public static final String buildByScreenName(final String[] projection, final long account_id,
-						final String screen_name, final String selection, final String sortOrder) {
-					final SQLQueryBuilder qb = new SQLQueryBuilder();
-					final Selectable select = Utils.getColumnsFromProjection(projection);
-					qb.select(select);
-					qb.from(new Tables(Inbox.TABLE_NAME));
-					final Where account_id_where = new Where(String.format("%s = %d", ACCOUNT_ID, account_id));
-					final Where sender_where = new Where(String.format("%s = '%s'", SENDER_SCREEN_NAME, screen_name))
-							.and(account_id_where);
-					final Where recipient_where = new Where(String.format("%s = '%s'", RECIPIENT_SCREEN_NAME,
-							screen_name)).and(account_id_where);
-					if (selection != null) {
-						qb.where(new Where(selection).and(sender_where));
-					} else {
-						qb.where(sender_where);
-					}
-					qb.union();
-					qb.select(select);
-					qb.from(new Tables(Outbox.TABLE_NAME));
-					if (selection != null) {
-						qb.where(new Where(selection).and(recipient_where));
-					} else {
-						qb.where(recipient_where);
-					}
-					qb.orderBy(new OrderBy(sortOrder != null ? sortOrder
-							: DirectMessages.Conversation.DEFAULT_SORT_ORDER));
-					return qb.build().getSQL();
-				}
-
-			}
+			public static final Uri CONTENT_URI_SCREEN_NAME = Uri.withAppendedPath(DirectMessages.CONTENT_URI,
+					CONTENT_PATH_SEGMENT_SCREEN_NAME);
 		}
 
-		public static interface ConversationsEntry extends BaseColumns {
+		public static interface ConversationEntries extends BaseColumns {
 
-			public static final String TABLE_NAME = "messages_conversations_entry";
-			public static final String CONTENT_PATH = TABLE_NAME;
+			public static final String TABLE_NAME = "messages_conversation_entries";
 
-			public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
+			public static final String CONTENT_PATH_SEGMENT = "conversation_entries";
+			public static final String CONTENT_PATH = DirectMessages.CONTENT_PATH + "/" + CONTENT_PATH_SEGMENT;
+
+			public static final Uri CONTENT_URI = Uri
+					.withAppendedPath(DirectMessages.CONTENT_URI, CONTENT_PATH_SEGMENT);
 
 			public static final String MESSAGE_TIMESTAMP = "message_timestamp";
 			public static final String NAME = "name";
@@ -418,68 +356,17 @@ public final class TweetStore {
 			public static final int IDX_PROFILE_IMAGE_URL = 7;
 			public static final int IDX_TEXT = 8;
 			public static final int IDX_CONVERSATION_ID = 9;
-
-			public static class QueryBuilder {
-				public static String build(final String where) {
-					final SQLQueryBuilder qb = new SQLQueryBuilder();
-					qb.select(new Columns(new Column(_ID), new Column(MESSAGE_TIMESTAMP), new Column(MESSAGE_ID),
-							new Column(ACCOUNT_ID), new Column(IS_OUTGOING), new Column(NAME), new Column(SCREEN_NAME),
-							new Column(PROFILE_IMAGE_URL), new Column(TEXT_HTML), new Column(CONVERSATION_ID)));
-					final SQLQueryBuilder entry_ids = new SQLQueryBuilder();
-					entry_ids.select(new Columns(new Column(_ID), new Column(MESSAGE_TIMESTAMP),
-							new Column(MESSAGE_ID), new Column(ACCOUNT_ID), new Column("0", IS_OUTGOING), new Column(
-									SENDER_NAME, NAME), new Column(SENDER_SCREEN_NAME, SCREEN_NAME), new Column(
-									SENDER_PROFILE_IMAGE_URL, PROFILE_IMAGE_URL), new Column(TEXT_HTML), new Column(
-									SENDER_ID, CONVERSATION_ID)));
-					entry_ids.from(new Tables(Inbox.TABLE_NAME));
-					entry_ids.union();
-					entry_ids.select(new Columns(new Column(_ID), new Column(MESSAGE_TIMESTAMP),
-							new Column(MESSAGE_ID), new Column(ACCOUNT_ID), new Column("1", IS_OUTGOING), new Column(
-									RECIPIENT_NAME, NAME), new Column(RECIPIENT_SCREEN_NAME, SCREEN_NAME), new Column(
-									RECIPIENT_PROFILE_IMAGE_URL, PROFILE_IMAGE_URL), new Column(TEXT_HTML), new Column(
-									RECIPIENT_ID, CONVERSATION_ID)));
-					entry_ids.from(new Tables(Outbox.TABLE_NAME));
-					qb.from(entry_ids.build());
-					final SQLQueryBuilder recent_inbox_msg_ids = new SQLQueryBuilder()
-							.select(new Column("MAX(" + MESSAGE_ID + ")")).from(new Tables(Inbox.TABLE_NAME))
-							.groupBy(new Column(SENDER_ID));
-					final SQLQueryBuilder recent_outbox_msg_ids = new SQLQueryBuilder()
-							.select(new Column("MAX(" + MESSAGE_ID + ")")).from(new Tables(Outbox.TABLE_NAME))
-							.groupBy(new Column(RECIPIENT_ID));
-					final SQLQueryBuilder conversation_ids = new SQLQueryBuilder();
-					conversation_ids
-							.select(new Columns(new Column(MESSAGE_ID), new Column(SENDER_ID, CONVERSATION_ID)));
-					conversation_ids.from(new Tables(Inbox.TABLE_NAME));
-					conversation_ids.where(Where.in(new Column(MESSAGE_ID), recent_inbox_msg_ids.build()));
-					conversation_ids.union();
-					conversation_ids.select(new Columns(new Column(MESSAGE_ID), new Column(RECIPIENT_ID,
-							CONVERSATION_ID)));
-					conversation_ids.from(new Tables(Outbox.TABLE_NAME));
-					conversation_ids.where(Where.in(new Column(MESSAGE_ID), recent_outbox_msg_ids.build()));
-					final SQLQueryBuilder grouped_message_conversation_ids = new SQLQueryBuilder();
-					grouped_message_conversation_ids.select(new Column(MESSAGE_ID));
-					grouped_message_conversation_ids.from(conversation_ids.build());
-					grouped_message_conversation_ids.groupBy(new Column(CONVERSATION_ID));
-					final Where grouped_where = Where.in(new Column(MESSAGE_ID),
-							grouped_message_conversation_ids.build());
-					qb.where(grouped_where);
-					if (where != null) {
-						grouped_where.and(new Where(where));
-					}
-					qb.groupBy(Utils.getColumnsFromProjection(CONVERSATION_ID, ACCOUNT_ID));
-					qb.orderBy(new OrderBy(MESSAGE_TIMESTAMP + " DESC"));
-					return qb.build().getSQL();
-				}
-			}
 		}
 
 		public static interface Inbox extends DirectMessages {
 
 			public static final String TABLE_NAME = "messages_inbox";
 
-			public static final String CONTENT_PATH = TABLE_NAME;
+			public static final String CONTENT_PATH_SEGMENT = "inbox";
+			public static final String CONTENT_PATH = DirectMessages.CONTENT_PATH + "/" + CONTENT_PATH_SEGMENT;
 
-			public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
+			public static final Uri CONTENT_URI = Uri
+					.withAppendedPath(DirectMessages.CONTENT_URI, CONTENT_PATH_SEGMENT);
 
 		}
 
@@ -487,28 +374,12 @@ public final class TweetStore {
 
 			public static final String TABLE_NAME = "messages_outbox";
 
-			public static final String CONTENT_PATH = TABLE_NAME;
+			public static final String CONTENT_PATH_SEGMENT = "outbox";
+			public static final String CONTENT_PATH = DirectMessages.CONTENT_PATH + "/" + CONTENT_PATH_SEGMENT;
 
-			public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
+			public static final Uri CONTENT_URI = Uri
+					.withAppendedPath(DirectMessages.CONTENT_URI, CONTENT_PATH_SEGMENT);
 
-		}
-
-		public static final class QueryBuilder {
-			public static final String build(final String[] projection, final String selection, final String sortOrder) {
-				final SQLQueryBuilder qb = new SQLQueryBuilder();
-				final Selectable select = Utils.getColumnsFromProjection(projection);
-				qb.select(select).from(new Tables(Inbox.TABLE_NAME));
-				if (selection != null) {
-					qb.where(new Where(selection));
-				}
-				qb.union();
-				qb.select(select).from(new Tables(Outbox.TABLE_NAME));
-				if (selection != null) {
-					qb.where(new Where(selection));
-				}
-				qb.orderBy(new OrderBy(sortOrder != null ? sortOrder : DirectMessages.DEFAULT_SORT_ORDER));
-				return qb.build().getSQL();
-			}
 		}
 
 	}
@@ -530,6 +401,10 @@ public final class TweetStore {
 
 	public static interface Drafts extends BaseColumns {
 
+		public static final int ACTION_UPDATE_STATUS = 1;
+		public static final int ACTION_SEND_DIRECT_MESSAGE = 2;
+		public static final int ACTION_CREATE_FRIENDSHIP = 3;
+
 		public static final String TABLE_NAME = "drafts";
 		public static final String CONTENT_PATH = TABLE_NAME;
 
@@ -547,27 +422,43 @@ public final class TweetStore {
 		 */
 		public static final String ACCOUNT_IDS = "account_ids";
 
-		public static final String IMAGE_URI = "image_uri";
+		public static final String MEDIA_URI = "media_uri";
 
 		public static final String LOCATION = "location";
 
 		public static final String IN_REPLY_TO_STATUS_ID = "in_reply_to_status_id";
 
-		public static final String ATTACHED_IMAGE_TYPE = "attached_image_type";
+		public static final String MEDIA_TYPE = "media_type";
 
 		public static final String IS_POSSIBLY_SENSITIVE = "is_possibly_sensitive";
 
-		public static final String[] COLUMNS = new String[] { _ID, TEXT, ACCOUNT_IDS, LOCATION, IMAGE_URI,
-				IN_REPLY_TO_STATUS_ID, ATTACHED_IMAGE_TYPE, IS_POSSIBLY_SENSITIVE };
+		public static final String TIMESTAMP = "timestamp";
+
+		public static final String ACTION_TYPE = "action_type";
+
+		public static final String ACTION_EXTRAS = "action_extras";
+
+		public static final String[] COLUMNS = new String[] { _ID, TEXT, ACCOUNT_IDS, LOCATION, MEDIA_URI,
+				IN_REPLY_TO_STATUS_ID, MEDIA_TYPE, IS_POSSIBLY_SENSITIVE, TIMESTAMP, ACTION_TYPE, ACTION_EXTRAS };
 
 		public static final String[] TYPES = new String[] { TYPE_PRIMARY_KEY, TYPE_TEXT, TYPE_TEXT, TYPE_TEXT,
-				TYPE_TEXT, TYPE_INT, TYPE_INT, TYPE_BOOLEAN };
+				TYPE_TEXT, TYPE_INT, TYPE_INT, TYPE_BOOLEAN, TYPE_INT, TYPE_INT, TYPE_TEXT };
 
 	}
 
 	public static interface Filters extends BaseColumns {
 
+		public static final String CONTENT_PATH = "filters";
+
+		public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
+
 		public static final String VALUE = "value";
+
+		public static final String ENABLE_IN_HOME_TIMELINE = "enable_in_home_timeline";
+
+		public static final String ENABLE_IN_MENTIONS = "enable_in_mentions";
+
+		public static final String ENABLE_FOR_RETWEETS = "enable_for_retweets";
 
 		public static final String[] COLUMNS = new String[] { _ID, VALUE };
 
@@ -576,25 +467,33 @@ public final class TweetStore {
 		public static interface Keywords extends Filters {
 
 			public static final String TABLE_NAME = "filtered_keywords";
-			public static final String CONTENT_PATH = TABLE_NAME;
-			public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
+			public static final String CONTENT_PATH_SEGMENT = "keywords";
+			public static final String CONTENT_PATH = Filters.CONTENT_PATH + "/" + CONTENT_PATH_SEGMENT;
+			public static final Uri CONTENT_URI = Uri.withAppendedPath(Filters.CONTENT_URI, CONTENT_PATH_SEGMENT);
 		}
 
 		public static interface Links extends Filters {
 
 			public static final String TABLE_NAME = "filtered_links";
-			public static final String CONTENT_PATH = TABLE_NAME;
-			public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
+			public static final String CONTENT_PATH_SEGMENT = "links";
+			public static final String CONTENT_PATH = Filters.CONTENT_PATH + "/" + CONTENT_PATH_SEGMENT;
+			public static final Uri CONTENT_URI = Uri.withAppendedPath(Filters.CONTENT_URI, CONTENT_PATH_SEGMENT);
 		}
 
 		public static interface Sources extends Filters {
 
 			public static final String TABLE_NAME = "filtered_sources";
-			public static final String CONTENT_PATH = TABLE_NAME;
-			public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
+			public static final String CONTENT_PATH_SEGMENT = "sources";
+			public static final String CONTENT_PATH = Filters.CONTENT_PATH + "/" + CONTENT_PATH_SEGMENT;
+			public static final Uri CONTENT_URI = Uri.withAppendedPath(Filters.CONTENT_URI, CONTENT_PATH_SEGMENT);
 		}
 
 		public static interface Users extends BaseColumns {
+
+			public static final String TABLE_NAME = "filtered_users";
+			public static final String CONTENT_PATH_SEGMENT = "users";
+			public static final String CONTENT_PATH = Filters.CONTENT_PATH + "/" + CONTENT_PATH_SEGMENT;
+			public static final Uri CONTENT_URI = Uri.withAppendedPath(Filters.CONTENT_URI, CONTENT_PATH_SEGMENT);
 
 			public static final String USER_ID = "user_id";
 			public static final String NAME = "name";
@@ -604,9 +503,6 @@ public final class TweetStore {
 
 			public static final String[] TYPES = new String[] { TYPE_PRIMARY_KEY, TYPE_INT_UNIQUE, TYPE_TEXT_NOT_NULL,
 					TYPE_TEXT_NOT_NULL };
-			public static final String TABLE_NAME = "filtered_users";
-			public static final String CONTENT_PATH = TABLE_NAME;
-			public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
 		}
 	}
 
@@ -838,21 +734,21 @@ public final class TweetStore {
 
 		public static final String ARGUMENTS = "arguments";
 
+		public static final String EXTRAS = "extras";
+
 		public static final String POSITION = "position";
 
-		public static final String[] COLUMNS = new String[] { _ID, NAME, ICON, TYPE, ARGUMENTS, POSITION };
+		public static final String[] COLUMNS = new String[] { _ID, NAME, ICON, TYPE, ARGUMENTS, EXTRAS, POSITION };
 
 		public static final String[] TYPES = new String[] { TYPE_PRIMARY_KEY, TYPE_TEXT_NOT_NULL, TYPE_TEXT, TYPE_TEXT,
-				TYPE_TEXT, TYPE_INT };
+				TYPE_TEXT, TYPE_TEXT, TYPE_INT };
 
 		public static final String DEFAULT_SORT_ORDER = POSITION + " ASC";
 	}
 
 	public static interface UnreadCounts extends BaseColumns {
 
-		public static final String TABLE_NAME = "unread_counts";
-
-		public static final String CONTENT_PATH = TABLE_NAME;
+		public static final String CONTENT_PATH = "unread_counts";
 
 		public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, CONTENT_PATH);
 
@@ -865,5 +761,14 @@ public final class TweetStore {
 		public static final String[] MATRIX_COLUMNS = new String[] { TAB_POSITION, TAB_TYPE, COUNT };
 
 		public static final String[] COLUMNS = new String[] { _ID, TAB_POSITION, TAB_TYPE, COUNT };
+
+		public static interface ByType extends UnreadCounts {
+
+			public static final String CONTENT_PATH_SEGMENT = "by_type";
+
+			public static final String CONTENT_PATH = UnreadCounts.CONTENT_PATH + "/" + CONTENT_PATH_SEGMENT;
+
+			public static final Uri CONTENT_URI = Uri.withAppendedPath(UnreadCounts.CONTENT_URI, CONTENT_PATH_SEGMENT);
+		}
 	}
 }

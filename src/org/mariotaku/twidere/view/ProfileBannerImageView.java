@@ -1,18 +1,18 @@
 /*
  * 				Twidere - Twitter client for Android
- *
- *  Copyright (C) 2012-2013 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
+ * 
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
- *
+ * 
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ * 
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -34,7 +34,7 @@ import org.mariotaku.twidere.Constants;
 import org.mariotaku.twidere.util.ThemeUtils;
 import org.mariotaku.twidere.view.iface.IExtendedView;
 
-public class ProfileBannerImageView extends ClickableImageView implements IExtendedView, Constants {
+public class ProfileBannerImageView extends ForegroundImageView implements IExtendedView, Constants {
 
 	private static final int[] COLORS = new int[] { 0xFFFFFFFF, 0x00FFFFFF };
 	private static final int[] COLORS_REVERSED = new int[] { 0x00FFFFFF, 0xFFFFFFFF };
@@ -55,9 +55,11 @@ public class ProfileBannerImageView extends ClickableImageView implements IExten
 
 	public ProfileBannerImageView(final Context context, final AttributeSet attrs, final int defStyle) {
 		super(context, attrs, defStyle);
+		if (isInEditMode()) return;
 		ViewCompat.setLayerType(this, LAYER_TYPE_SOFTWARE, null);
 		final boolean is_dark_theme = ThemeUtils.isDarkTheme(context);
 		COLORS_REVERSED[1] = is_dark_theme ? 0xFF000000 : 0xFFFFFFFF;
+		setForeground(ThemeUtils.getImageHighlightDrawable(context));
 	}
 
 	@Override
@@ -67,6 +69,7 @@ public class ProfileBannerImageView extends ClickableImageView implements IExten
 
 	@Override
 	protected void onDraw(final Canvas canvas) {
+		if (isInEditMode()) return;
 		final int width = getWidth(), height = getHeight();
 		if (mShader == null) return;
 		super.onDraw(canvas);

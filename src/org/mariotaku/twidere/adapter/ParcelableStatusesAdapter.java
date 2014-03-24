@@ -1,32 +1,31 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.adapter;
 
 import static org.mariotaku.twidere.model.ParcelableLocation.isValidLocation;
+import static org.mariotaku.twidere.util.UserColorNicknameUtils.getUserColor;
+import static org.mariotaku.twidere.util.UserColorNicknameUtils.getUserNickname;
 import static org.mariotaku.twidere.util.Utils.configBaseCardAdapter;
 import static org.mariotaku.twidere.util.Utils.getAccountColor;
-import static org.mariotaku.twidere.util.Utils.getAccountScreenName;
-import static org.mariotaku.twidere.util.Utils.getLinkHighlightOptionInt;
-import static org.mariotaku.twidere.util.Utils.getStatusBackground;
-import static org.mariotaku.twidere.util.Utils.getUserColor;
-import static org.mariotaku.twidere.util.Utils.getUserNickname;
+import static org.mariotaku.twidere.util.Utils.getCardHighlightColor;
+import static org.mariotaku.twidere.util.Utils.getCardHighlightOptionInt;
 import static org.mariotaku.twidere.util.Utils.isFiltered;
 import static org.mariotaku.twidere.util.Utils.openImage;
 import static org.mariotaku.twidere.util.Utils.openUserProfile;
@@ -39,48 +38,51 @@ import android.text.TextUtils;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.widget.ImageView.ScaleType;
 
 import org.mariotaku.twidere.R;
 import org.mariotaku.twidere.adapter.iface.IStatusesAdapter;
 import org.mariotaku.twidere.app.TwidereApplication;
 import org.mariotaku.twidere.model.ParcelableStatus;
+import org.mariotaku.twidere.model.ParcelableUserMention;
 import org.mariotaku.twidere.util.ImageLoaderWrapper;
 import org.mariotaku.twidere.util.ImageLoadingHandler;
 import org.mariotaku.twidere.util.MultiSelectManager;
-import org.mariotaku.twidere.util.OnLinkClickHandler;
 import org.mariotaku.twidere.util.TwidereLinkify;
+import org.mariotaku.twidere.util.Utils;
 import org.mariotaku.twidere.view.holder.StatusViewHolder;
+import org.mariotaku.twidere.view.iface.ICardItemView.OnOverflowIconClickListener;
 
 import java.util.List;
+import java.util.Locale;
 
-public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> implements
-		IStatusesAdapter<List<ParcelableStatus>>, OnClickListener {
+public class ParcelableStatusesAdapter extends BaseArrayAdapter<ParcelableStatus> implements
+		IStatusesAdapter<List<ParcelableStatus>>, OnClickListener, OnOverflowIconClickListener {
 
 	private final Context mContext;
-	private final ImageLoaderWrapper mImageLoader;
 	private final MultiSelectManager mMultiSelectManager;
-	private final TwidereLinkify mLinkify;
 	private final SQLiteDatabase mDatabase;
 	private final ImageLoadingHandler mImageLoadingHandler;
-
 	private MenuButtonClickListener mListener;
-	private boolean mDisplayProfileImage, mDisplayImagePreview, mShowAccountColor, mGapDisallowed,
-			mMentionsHighlightDisabled, mFavoritesHighlightDisabled, mDisplaySensitiveContents,
-			mIndicateMyStatusDisabled, mIsLastItemFiltered, mFiltersEnabled, mAnimationEnabled;
-	private float mTextSize;
-	private int mLinkHighlightOption;
+
+	private boolean mDisplayImagePreview, mGapDisallowed, mMentionsHighlightDisabled, mFavoritesHighlightDisabled,
+			mDisplaySensitiveContents, mIndicateMyStatusDisabled, mIsLastItemFiltered, mFiltersEnabled,
+			mAnimationEnabled;
 	private boolean mFilterIgnoreUser, mFilterIgnoreSource, mFilterIgnoreTextHtml, mFilterIgnoreTextPlain,
-			mFilterRetweetedById, mNicknameOnly, mDisplayNameFirst;
-	private int mMaxAnimationPosition;
+			mFilterRetweetedById;
+	private int mMaxAnimationPosition, mCardHighlightOption;
+	private ScaleType mImagePreviewScaleType;
 
 	public ParcelableStatusesAdapter(final Context context) {
-		super(context, R.layout.status_list_item);
+		this(context, Utils.isCompactCards(context));
+	}
+
+	public ParcelableStatusesAdapter(final Context context, final boolean compactCards) {
+		super(context, getItemResource(compactCards));
 		mContext = context;
 		final TwidereApplication app = TwidereApplication.getInstance(context);
 		mMultiSelectManager = app.getMultiSelectManager();
-		mImageLoader = app.getImageLoaderWrapper();
 		mDatabase = app.getSQLiteDatabase();
-		mLinkify = new TwidereLinkify(new OnLinkClickHandler(mContext));
 		mImageLoadingHandler = new ImageLoadingHandler();
 		configBaseCardAdapter(context, this);
 		setMaxAnimationPosition(-1);
@@ -96,8 +98,16 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 
 	@Override
 	public long getAccountId(final int position) {
-		if (position >= 0 && position < getCount()) return getItem(position).account_id;
+		if (position >= 0 && position < getCount()) {
+			final ParcelableStatus status = getItem(position);
+			return status != null ? status.account_id : -1;
+		}
 		return -1;
+	}
+
+	@Override
+	public int getActualCount() {
+		return super.getCount();
 	}
 
 	@Override
@@ -119,13 +129,22 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 	}
 
 	@Override
+	public long getLastStatusId() {
+		if (super.getCount() == 0) return -1;
+		return getItem(super.getCount() - 1).id;
+	}
+
+	@Override
 	public ParcelableStatus getStatus(final int position) {
 		return getItem(position);
 	}
 
 	@Override
 	public long getStatusId(final int position) {
-		if (position >= 0 && position < getCount()) return getItem(position).id;
+		if (position >= 0 && position < getCount()) {
+			final ParcelableStatus status = getItem(position);
+			return status != null ? status.id : -1;
+		}
 		return -1;
 	}
 
@@ -142,28 +161,35 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 			holder.profile_image.setOnClickListener(this);
 			holder.my_profile_image.setOnClickListener(this);
 			holder.image_preview.setOnClickListener(this);
-			holder.item_menu.setOnClickListener(this);
+			holder.content.setOnOverflowIconClickListener(this);
 			view.setTag(holder);
 		}
 
-		// Clear images in prder to prevent images in recycled view shown.
-		// holder.profile_image.setImageDrawable(null);
-		// holder.my_profile_image.setImageDrawable(null);
-		// holder.image_preview.setImageDrawable(null);
-
 		final ParcelableStatus status = getItem(position);
 
-		final boolean show_gap = status.is_gap && !mGapDisallowed && position != getCount() - 1;
+		final boolean showGap = status.is_gap && !mGapDisallowed && position != getCount() - 1;
 
-		holder.setShowAsGap(show_gap);
+		holder.position = position;
+		holder.setShowAsGap(showGap);
+		holder.setDisplayProfileImage(isDisplayProfileImage());
+		holder.setCardHighlightOption(mCardHighlightOption);
 
-		if (!show_gap) {
+		if (!showGap) {
+			final TwidereLinkify linkify = getLinkify();
+			final ImageLoaderWrapper loader = getImageLoader();
+			final int highlightOption = getLinkHighlightOption();
+			final boolean mShowAccountColor = isShowAccountColor();
+
+			// Clear images in prder to prevent images in recycled view shown.
+			holder.profile_image.setImageDrawable(null);
+			holder.my_profile_image.setImageDrawable(null);
+			holder.image_preview.setImageDrawable(null);
 
 			holder.setAccountColorEnabled(mShowAccountColor);
 
-			if (mLinkHighlightOption != LINK_HIGHLIGHT_OPTION_CODE_NONE) {
+			if (highlightOption != VALUE_LINK_HIGHLIGHT_OPTION_CODE_NONE) {
 				holder.text.setText(Html.fromHtml(status.text_html));
-				mLinkify.applyAllLinks(holder.text, status.account_id, status.is_possibly_sensitive);
+				linkify.applyAllLinks(holder.text, status.account_id, status.is_possibly_sensitive);
 				holder.text.setMovementMethod(null);
 			} else {
 				holder.text.setText(status.text_unescaped);
@@ -173,27 +199,26 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 				holder.setAccountColor(getAccountColor(mContext, status.account_id));
 			}
 
-			final String account_screen_name = getAccountScreenName(mContext, status.account_id);
-			final boolean is_mention = !TextUtils.isEmpty(status.text_plain)
-					&& status.text_plain.toLowerCase().contains('@' + account_screen_name.toLowerCase());
-			final boolean is_my_status = status.account_id == status.user_id;
+			final boolean isMention = ParcelableUserMention.hasMention(status.mentions, status.account_id);
+			final boolean isMyStatus = status.account_id == status.user_id;
 			holder.setUserColor(getUserColor(mContext, status.user_id));
-			holder.setHighlightColor(getStatusBackground(!mMentionsHighlightDisabled && is_mention,
+			holder.setHighlightColor(getCardHighlightColor(!mMentionsHighlightDisabled && isMention,
 					!mFavoritesHighlightDisabled && status.is_favorite, status.is_retweet));
-			holder.setTextSize(mTextSize);
+			holder.setTextSize(getTextSize());
 
-			holder.setIsMyStatus(is_my_status && !mIndicateMyStatusDisabled);
+			holder.setIsMyStatus(isMyStatus && !mIndicateMyStatusDisabled);
 
 			holder.setUserType(status.user_is_verified, status.user_is_protected);
-			holder.setDisplayNameFirst(mDisplayNameFirst);
-			holder.setNicknameOnly(mNicknameOnly);
+			holder.setDisplayNameFirst(isDisplayNameFirst());
+			holder.setNicknameOnly(isNicknameOnly());
 			final String nick = getUserNickname(mContext, status.user_id);
-			holder.name.setText(TextUtils.isEmpty(nick) ? status.user_name : mNicknameOnly ? nick : mContext.getString(
-					R.string.name_with_nickname, status.user_name, nick));
+			holder.name.setText(TextUtils.isEmpty(nick) ? status.user_name : isNicknameOnly() ? nick : mContext
+					.getString(R.string.name_with_nickname, status.user_name, nick));
 			holder.screen_name.setText("@" + status.user_screen_name);
-			if (mLinkHighlightOption != LINK_HIGHLIGHT_OPTION_CODE_NONE) {
-				mLinkify.applyUserProfileLink(holder.name, status.account_id, status.user_id, status.user_screen_name);
-				mLinkify.applyUserProfileLink(holder.screen_name, status.account_id, status.user_id,
+			if (highlightOption != VALUE_LINK_HIGHLIGHT_OPTION_CODE_NONE) {
+				linkify.applyUserProfileLinkNoHighlight(holder.name, status.account_id, status.user_id,
+						status.user_screen_name);
+				linkify.applyUserProfileLinkNoHighlight(holder.screen_name, status.account_id, status.user_id,
 						status.user_screen_name);
 				holder.name.setMovementMethod(null);
 				holder.screen_name.setMovementMethod(null);
@@ -208,29 +233,31 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 			} else if (status.in_reply_to_status_id > 0) {
 				holder.setReplyTo(status.in_reply_to_user_id, status.in_reply_to_name, status.in_reply_to_screen_name);
 			}
-			if (mDisplayProfileImage) {
-				mImageLoader.displayProfileImage(holder.my_profile_image, status.user_profile_image_url);
-				mImageLoader.displayProfileImage(holder.profile_image, status.user_profile_image_url);
+			if (isDisplayProfileImage()) {
+				loader.displayProfileImage(holder.my_profile_image, status.user_profile_image_url);
+				loader.displayProfileImage(holder.profile_image, status.user_profile_image_url);
 				holder.profile_image.setTag(position);
 				holder.my_profile_image.setTag(position);
 			} else {
 				holder.profile_image.setVisibility(View.GONE);
 				holder.my_profile_image.setVisibility(View.GONE);
 			}
-			final boolean has_preview = mDisplayImagePreview && status.has_media && status.media_link != null;
-			holder.image_preview_container.setVisibility(has_preview ? View.VISIBLE : View.GONE);
-			if (has_preview) {
+			final boolean hasPreview = mDisplayImagePreview && status.has_media && status.media_link != null;
+			holder.image_preview_container.setVisibility(hasPreview ? View.VISIBLE : View.GONE);
+			if (hasPreview) {
+				if (mImagePreviewScaleType != null) {
+					holder.image_preview.setScaleType(mImagePreviewScaleType);
+				}
 				if (status.is_possibly_sensitive && !mDisplaySensitiveContents) {
 					holder.image_preview.setImageDrawable(null);
 					holder.image_preview.setBackgroundResource(R.drawable.image_preview_nsfw);
 					holder.image_preview_progress.setVisibility(View.GONE);
 				} else if (!status.media_link.equals(mImageLoadingHandler.getLoadingUri(holder.image_preview))) {
 					holder.image_preview.setBackgroundResource(0);
-					mImageLoader.displayPreviewImage(holder.image_preview, status.media_link, mImageLoadingHandler);
+					loader.displayPreviewImage(holder.image_preview, status.media_link, mImageLoadingHandler);
 				}
 				holder.image_preview.setTag(position);
 			}
-			holder.item_menu.setTag(position);
 		}
 		if (position > mMaxAnimationPosition) {
 			if (mAnimationEnabled) {
@@ -268,11 +295,18 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 				}
 				break;
 			}
-			case R.id.item_menu: {
-				if (position == -1 || mListener == null) return;
-				mListener.onMenuButtonClick(view, position, getItemId(position));
-				break;
-			}
+		}
+	}
+
+	@Override
+	public void onOverflowIconClick(final View view) {
+		if (mMultiSelectManager.isActive()) return;
+		final Object tag = view.getTag();
+		if (tag instanceof StatusViewHolder) {
+			final StatusViewHolder holder = (StatusViewHolder) tag;
+			final int position = holder.position;
+			if (position == -1 || mListener == null) return;
+			mListener.onMenuButtonClick(view, position, getItemId(position));
 		}
 	}
 
@@ -280,6 +314,14 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 	public void setAnimationEnabled(final boolean anim) {
 		if (mAnimationEnabled == anim) return;
 		mAnimationEnabled = anim;
+	}
+
+	@Override
+	public void setCardHighlightOption(final String option) {
+		final int option_int = getCardHighlightOptionInt(option);
+		if (option_int == mCardHighlightOption) return;
+		mCardHighlightOption = option_int;
+		notifyDataSetChanged();
 	}
 
 	@Override
@@ -295,20 +337,6 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 	public void setDisplayImagePreview(final boolean display) {
 		if (display == mDisplayImagePreview) return;
 		mDisplayImagePreview = display;
-		notifyDataSetChanged();
-	}
-
-	@Override
-	public void setDisplayNameFirst(final boolean name_first) {
-		if (mDisplayNameFirst == name_first) return;
-		mDisplayNameFirst = name_first;
-		notifyDataSetChanged();
-	}
-
-	@Override
-	public void setDisplayProfileImage(final boolean display) {
-		if (display == mDisplayProfileImage) return;
-		mDisplayProfileImage = display;
 		notifyDataSetChanged();
 	}
 
@@ -352,18 +380,18 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 	}
 
 	@Override
-	public void setIndicateMyStatusDisabled(final boolean disable) {
-		if (mIndicateMyStatusDisabled == disable) return;
-		mIndicateMyStatusDisabled = disable;
-		notifyDataSetChanged();
+	public void setImagePreviewScaleType(final String scaleTypeString) {
+		final ScaleType scaleType = ScaleType.valueOf(scaleTypeString.toUpperCase(Locale.US));
+		if (!scaleType.equals(mImagePreviewScaleType)) {
+			mImagePreviewScaleType = scaleType;
+			notifyDataSetChanged();
+		}
 	}
 
 	@Override
-	public void setLinkHighlightOption(final String option) {
-		final int option_int = getLinkHighlightOptionInt(option);
-		if (option_int == mLinkHighlightOption) return;
-		mLinkHighlightOption = option_int;
-		mLinkify.setHighlightOption(option_int);
+	public void setIndicateMyStatusDisabled(final boolean disable) {
+		if (mIndicateMyStatusDisabled == disable) return;
+		mIndicateMyStatusDisabled = disable;
 		notifyDataSetChanged();
 	}
 
@@ -384,27 +412,6 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 		mListener = listener;
 	}
 
-	@Override
-	public void setNicknameOnly(final boolean nickname_only) {
-		if (mNicknameOnly == nickname_only) return;
-		mNicknameOnly = nickname_only;
-		notifyDataSetChanged();
-	}
-
-	@Override
-	public void setShowAccountColor(final boolean show) {
-		if (show == mShowAccountColor) return;
-		mShowAccountColor = show;
-		notifyDataSetChanged();
-	}
-
-	@Override
-	public void setTextSize(final float text_size) {
-		if (text_size == mTextSize) return;
-		mTextSize = text_size;
-		notifyDataSetChanged();
-	}
-
 	private void rebuildFilterInfo() {
 		if (!isEmpty()) {
 			final ParcelableStatus last = getItem(super.getCount() - 1);
@@ -418,5 +425,9 @@ public class ParcelableStatusesAdapter extends ArrayAdapter<ParcelableStatus> im
 			mIsLastItemFiltered = false;
 		}
 		notifyDataSetChanged();
+	}
+
+	private static int getItemResource(final boolean compactCards) {
+		return compactCards ? R.layout.card_item_status_compact : R.layout.card_item_status;
 	}
 }

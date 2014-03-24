@@ -1,3 +1,22 @@
+/*
+ * 				Twidere - Twitter client for Android
+ * 
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package org.mariotaku.twidere.util;
 
 import static org.mariotaku.twidere.util.CompareUtils.classEquals;
@@ -7,6 +26,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -14,17 +34,18 @@ import android.support.v4.app.Fragment;
 
 import org.mariotaku.twidere.Constants;
 import org.mariotaku.twidere.R;
-import org.mariotaku.twidere.fragment.ActivitiesAboutMeFragment;
-import org.mariotaku.twidere.fragment.ActivitiesByFriendsFragment;
-import org.mariotaku.twidere.fragment.DirectMessagesFragment;
-import org.mariotaku.twidere.fragment.HomeTimelineFragment;
-import org.mariotaku.twidere.fragment.MentionsFragment;
-import org.mariotaku.twidere.fragment.SearchStatusesFragment;
-import org.mariotaku.twidere.fragment.StaggeredHomeTimelineFragment;
-import org.mariotaku.twidere.fragment.TrendsSuggectionsFragment;
-import org.mariotaku.twidere.fragment.UserFavoritesFragment;
-import org.mariotaku.twidere.fragment.UserListTimelineFragment;
-import org.mariotaku.twidere.fragment.UserTimelineFragment;
+import org.mariotaku.twidere.fragment.support.ActivitiesAboutMeFragment;
+import org.mariotaku.twidere.fragment.support.ActivitiesByFriendsFragment;
+import org.mariotaku.twidere.fragment.support.DirectMessagesFragment;
+import org.mariotaku.twidere.fragment.support.HomeTimelineFragment;
+import org.mariotaku.twidere.fragment.support.InvalidTabFragment;
+import org.mariotaku.twidere.fragment.support.MentionsFragment;
+import org.mariotaku.twidere.fragment.support.SearchStatusesFragment;
+import org.mariotaku.twidere.fragment.support.StaggeredHomeTimelineFragment;
+import org.mariotaku.twidere.fragment.support.TrendsSuggectionsFragment;
+import org.mariotaku.twidere.fragment.support.UserFavoritesFragment;
+import org.mariotaku.twidere.fragment.support.UserListTimelineFragment;
+import org.mariotaku.twidere.fragment.support.UserTimelineFragment;
 import org.mariotaku.twidere.model.CustomTabConfiguration;
 import org.mariotaku.twidere.model.SupportTabSpec;
 import org.mariotaku.twidere.provider.TweetStore.Tabs;
@@ -42,58 +63,59 @@ public class CustomTabUtils implements Constants {
 
 	static {
 		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_HOME_TIMELINE, new CustomTabConfiguration(
-				HomeTimelineFragment.class, R.string.home, R.drawable.ic_tab_home, false,
-				CustomTabConfiguration.FIELD_TYPE_NONE, 0, true));
+				HomeTimelineFragment.class, R.string.home, R.drawable.ic_iconic_action_home,
+				CustomTabConfiguration.ACCOUNT_OPTIONAL, CustomTabConfiguration.FIELD_TYPE_NONE, 0, false));
 		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_MENTIONS_TIMELINE, new CustomTabConfiguration(
-				MentionsFragment.class, R.string.mentions, R.drawable.ic_tab_mention, false,
-				CustomTabConfiguration.FIELD_TYPE_NONE, 1, true));
+				MentionsFragment.class, R.string.mentions, R.drawable.ic_iconic_action_mention,
+				CustomTabConfiguration.ACCOUNT_OPTIONAL, CustomTabConfiguration.FIELD_TYPE_NONE, 1, false));
 		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_DIRECT_MESSAGES, new CustomTabConfiguration(
-				DirectMessagesFragment.class, R.string.direct_messages, R.drawable.ic_tab_message, false,
-				CustomTabConfiguration.FIELD_TYPE_NONE, 2, true));
+				DirectMessagesFragment.class, R.string.direct_messages, R.drawable.ic_iconic_action_message,
+				CustomTabConfiguration.ACCOUNT_OPTIONAL, CustomTabConfiguration.FIELD_TYPE_NONE, 2, false));
 		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_TRENDS_SUGGESTIONS, new CustomTabConfiguration(
-				TrendsSuggectionsFragment.class, R.string.trends, R.drawable.ic_tab_trends, false,
-				CustomTabConfiguration.FIELD_TYPE_NONE, 3, true));
+				TrendsSuggectionsFragment.class, R.string.trends, R.drawable.ic_iconic_action_hashtag,
+				CustomTabConfiguration.ACCOUNT_NONE, CustomTabConfiguration.FIELD_TYPE_NONE, 3, true));
 		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_FAVORITES, new CustomTabConfiguration(UserFavoritesFragment.class,
-				R.string.favorites, R.drawable.ic_tab_star, true, CustomTabConfiguration.FIELD_TYPE_USER, 4));
+				R.string.favorites, R.drawable.ic_iconic_action_star, CustomTabConfiguration.ACCOUNT_REQUIRED,
+				CustomTabConfiguration.FIELD_TYPE_USER, 4));
 		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_USER_TIMELINE, new CustomTabConfiguration(
-				UserTimelineFragment.class, R.string.users_statuses, R.drawable.ic_tab_quote, true,
-				CustomTabConfiguration.FIELD_TYPE_USER, 5));
+				UserTimelineFragment.class, R.string.users_statuses, R.drawable.ic_iconic_action_quote,
+				CustomTabConfiguration.ACCOUNT_REQUIRED, CustomTabConfiguration.FIELD_TYPE_USER, 5));
 		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_SEARCH_STATUSES, new CustomTabConfiguration(
-				SearchStatusesFragment.class, R.string.search_statuses, R.drawable.ic_tab_search, true,
-				CustomTabConfiguration.FIELD_TYPE_TEXT, R.string.query, EXTRA_QUERY, 6));
+				SearchStatusesFragment.class, R.string.search_statuses, R.drawable.ic_iconic_action_search,
+				CustomTabConfiguration.ACCOUNT_REQUIRED, CustomTabConfiguration.FIELD_TYPE_TEXT, R.string.query,
+				EXTRA_QUERY, 6));
 		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_LIST_TIMELINE, new CustomTabConfiguration(
-				UserListTimelineFragment.class, R.string.list_timeline, R.drawable.ic_tab_list, true,
-				CustomTabConfiguration.FIELD_TYPE_USER_LIST, 7));
+				UserListTimelineFragment.class, R.string.list_timeline, R.drawable.ic_iconic_action_list,
+				CustomTabConfiguration.ACCOUNT_REQUIRED, CustomTabConfiguration.FIELD_TYPE_USER_LIST, 7));
 		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_ACTIVITIES_ABOUT_ME, new CustomTabConfiguration(
-				ActivitiesAboutMeFragment.class, R.string.activities_about_me, R.drawable.ic_tab_person, true,
-				CustomTabConfiguration.FIELD_TYPE_NONE, 8));
+				ActivitiesAboutMeFragment.class, R.string.activities_about_me, R.drawable.ic_iconic_action_user,
+				CustomTabConfiguration.ACCOUNT_REQUIRED, CustomTabConfiguration.FIELD_TYPE_NONE, 8));
 		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_ACTIVITIES_BY_FRIENDS, new CustomTabConfiguration(
-				ActivitiesByFriendsFragment.class, R.string.activities_by_friends, R.drawable.ic_tab_accounts, true,
+				ActivitiesByFriendsFragment.class, R.string.activities_by_friends,
+				R.drawable.ic_iconic_action_accounts, CustomTabConfiguration.ACCOUNT_REQUIRED,
 				CustomTabConfiguration.FIELD_TYPE_NONE, 9));
-		CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_STAGGERED_HOME_TIMELINE, new CustomTabConfiguration(
-				StaggeredHomeTimelineFragment.class, R.string.staggered_home_timeline, R.drawable.ic_tab_staggered,
-				false, CustomTabConfiguration.FIELD_TYPE_NONE, 10, true));
+		if (Utils.hasStaggeredTimeline()) {
+			CUSTOM_TABS_CONFIGURATION_MAP.put(TAB_TYPE_STAGGERED_HOME_TIMELINE, new CustomTabConfiguration(
+					StaggeredHomeTimelineFragment.class, R.string.staggered_home_timeline,
+					R.drawable.ic_iconic_action_staggered, CustomTabConfiguration.ACCOUNT_OPTIONAL,
+					CustomTabConfiguration.FIELD_TYPE_NONE, 10, false));
+		}
 
-		CUSTOM_TABS_ICON_NAME_MAP.put("accounts", R.drawable.ic_tab_accounts);
-		CUSTOM_TABS_ICON_NAME_MAP.put("fire", R.drawable.ic_tab_fire);
-		CUSTOM_TABS_ICON_NAME_MAP.put("hamster", R.drawable.ic_tab_hamster);
-		CUSTOM_TABS_ICON_NAME_MAP.put("heart", R.drawable.ic_tab_heart);
-		CUSTOM_TABS_ICON_NAME_MAP.put("home", R.drawable.ic_tab_home);
-		CUSTOM_TABS_ICON_NAME_MAP.put("list", R.drawable.ic_tab_list);
-		CUSTOM_TABS_ICON_NAME_MAP.put("mention", R.drawable.ic_tab_mention);
-		CUSTOM_TABS_ICON_NAME_MAP.put("message", R.drawable.ic_tab_message);
-		CUSTOM_TABS_ICON_NAME_MAP.put("neko", R.drawable.ic_tab_neko);
-		CUSTOM_TABS_ICON_NAME_MAP.put("person", R.drawable.ic_tab_person);
-		CUSTOM_TABS_ICON_NAME_MAP.put("pin", R.drawable.ic_tab_pin);
-		CUSTOM_TABS_ICON_NAME_MAP.put("quote", R.drawable.ic_tab_quote);
-		CUSTOM_TABS_ICON_NAME_MAP.put("ribbon", R.drawable.ic_tab_ribbon);
-		CUSTOM_TABS_ICON_NAME_MAP.put("search", R.drawable.ic_tab_search);
-		CUSTOM_TABS_ICON_NAME_MAP.put("staggered", R.drawable.ic_tab_staggered);
-		CUSTOM_TABS_ICON_NAME_MAP.put("star", R.drawable.ic_tab_star);
-		CUSTOM_TABS_ICON_NAME_MAP.put("trends", R.drawable.ic_tab_trends);
-		CUSTOM_TABS_ICON_NAME_MAP.put("twidere", R.drawable.ic_tab_twidere);
-		CUSTOM_TABS_ICON_NAME_MAP.put("twitter", R.drawable.ic_tab_twitter);
-		// CUSTOM_TABS_ICON_NAME_MAP.put(ICON_SPECIAL_TYPE_CUSTOMIZE, -1);
+		CUSTOM_TABS_ICON_NAME_MAP.put("accounts", R.drawable.ic_iconic_action_accounts);
+		CUSTOM_TABS_ICON_NAME_MAP.put("hashtag", R.drawable.ic_iconic_action_hashtag);
+		CUSTOM_TABS_ICON_NAME_MAP.put("heart", R.drawable.ic_iconic_action_heart);
+		CUSTOM_TABS_ICON_NAME_MAP.put("home", R.drawable.ic_iconic_action_home);
+		CUSTOM_TABS_ICON_NAME_MAP.put("list", R.drawable.ic_iconic_action_list);
+		CUSTOM_TABS_ICON_NAME_MAP.put("mention", R.drawable.ic_iconic_action_mention);
+		CUSTOM_TABS_ICON_NAME_MAP.put("message", R.drawable.ic_iconic_action_message);
+		CUSTOM_TABS_ICON_NAME_MAP.put("quote", R.drawable.ic_iconic_action_quote);
+		CUSTOM_TABS_ICON_NAME_MAP.put("search", R.drawable.ic_iconic_action_search);
+		CUSTOM_TABS_ICON_NAME_MAP.put("staggered", R.drawable.ic_iconic_action_staggered);
+		CUSTOM_TABS_ICON_NAME_MAP.put("star", R.drawable.ic_iconic_action_star);
+		CUSTOM_TABS_ICON_NAME_MAP.put("trends", R.drawable.ic_iconic_action_trends);
+		CUSTOM_TABS_ICON_NAME_MAP.put("twidere", R.drawable.ic_iconic_action_twidere);
+		CUSTOM_TABS_ICON_NAME_MAP.put("twitter", R.drawable.ic_iconic_action_twitter);
+		CUSTOM_TABS_ICON_NAME_MAP.put("user", R.drawable.ic_iconic_action_user);
 	}
 
 	public static String findTabIconKey(final int iconRes) {
@@ -110,7 +132,7 @@ public class CustomTabUtils implements Constants {
 		return null;
 	}
 
-	public static SupportTabSpec getAddedHomeTabAt(final Context context, final int position) {
+	public static SupportTabSpec getAddedTabAt(final Context context, final int position) {
 		if (context == null || position < 0) return null;
 		final ContentResolver resolver = context.getContentResolver();
 		final Cursor cur = resolver.query(Tabs.CONTENT_URI, Tabs.COLUMNS, Tabs.POSITION + " = " + position, null,
@@ -129,7 +151,7 @@ public class CustomTabUtils implements Constants {
 			args.putInt(EXTRA_TAB_POSITION, position);
 			final Class<? extends Fragment> fragment = conf.getFragmentClass();
 			return new SupportTabSpec(name != null ? name : getTabTypeName(context, type), getTabIconObject(icon_type),
-					fragment, args, position);
+					type, fragment, args, position);
 		} finally {
 			cur.close();
 		}
@@ -195,22 +217,20 @@ public class CustomTabUtils implements Constants {
 		if (cur == null) return Collections.emptyList();
 		final ArrayList<SupportTabSpec> tabs = new ArrayList<SupportTabSpec>();
 		cur.moveToFirst();
-		final int idx_name = cur.getColumnIndex(Tabs.NAME), idx_icon = cur.getColumnIndex(Tabs.ICON), idx_type = cur
-				.getColumnIndex(Tabs.TYPE), idx_arguments = cur.getColumnIndex(Tabs.ARGUMENTS), idx_position = cur
+		final int idx_name = cur.getColumnIndex(Tabs.NAME), idxIcon = cur.getColumnIndex(Tabs.ICON), idxType = cur
+				.getColumnIndex(Tabs.TYPE), idxArguments = cur.getColumnIndex(Tabs.ARGUMENTS), idxPosition = cur
 				.getColumnIndex(Tabs.POSITION);
 		while (!cur.isAfterLast()) {
-			final String type = cur.getString(idx_type);
+			final String type = cur.getString(idxType);
+			final int position = cur.getInt(idxPosition);
+			final String iconType = cur.getString(idxIcon);
+			final String name = cur.getString(idx_name);
+			final Bundle args = ParseUtils.jsonToBundle(cur.getString(idxArguments));
+			args.putInt(EXTRA_TAB_POSITION, position);
 			final CustomTabConfiguration conf = getTabConfiguration(type);
-			if (conf != null) {
-				final int position = cur.getInt(idx_position);
-				final String icon_type = cur.getString(idx_icon);
-				final String name = cur.getString(idx_name);
-				final Bundle args = ParseUtils.jsonToBundle(cur.getString(idx_arguments));
-				args.putInt(EXTRA_TAB_POSITION, position);
-				final Class<? extends Fragment> fragment = conf.getFragmentClass();
-				tabs.add(new SupportTabSpec(name != null ? name : getTabTypeName(context, type),
-						getTabIconObject(icon_type), fragment, args, position));
-			}
+			final Class<? extends Fragment> cls = conf != null ? conf.getFragmentClass() : InvalidTabFragment.class;
+			tabs.add(new SupportTabSpec(name != null ? name : getTabTypeName(context, type),
+					getTabIconObject(iconType), type, cls, args, position));
 			cur.moveToNext();
 		}
 		cur.close();
@@ -226,28 +246,43 @@ public class CustomTabUtils implements Constants {
 		return CUSTOM_TABS_CONFIGURATION_MAP.get(key);
 	}
 
-	public static Drawable getTabIconDrawable(final Context context, final Object icon_obj) {
-		if (context == null) return null;
-		final Resources res = context.getResources();
-		if (icon_obj instanceof Integer) {
+	public static Drawable getTabIconDrawable(final Context context, final Object iconObj) {
+		return getTabIconDrawable(context.getResources(), iconObj);
+	}
+
+	public static Drawable getTabIconDrawable(final Resources res, final Object iconObj) {
+		if (res == null) return null;
+		if (iconObj instanceof Integer) {
 			try {
-				return res.getDrawable((Integer) icon_obj);
+				return res.getDrawable((Integer) iconObj);
 			} catch (final Resources.NotFoundException e) {
 				// Ignore.
 			}
-		} else if (icon_obj instanceof Bitmap)
-			return new BitmapDrawable(res, (Bitmap) icon_obj);
-		else if (icon_obj instanceof Drawable)
-			return (Drawable) icon_obj;
-		else if (icon_obj instanceof File) {
-			final Bitmap b = Utils.getTabIconFromFile((File) icon_obj, res);
+		} else if (iconObj instanceof Bitmap)
+			return new BitmapDrawable(res, (Bitmap) iconObj);
+		else if (iconObj instanceof Drawable)
+			return (Drawable) iconObj;
+		else if (iconObj instanceof File) {
+			final Bitmap b = getTabIconFromFile((File) iconObj, res);
 			if (b != null) return new BitmapDrawable(res, b);
 		}
-		return res.getDrawable(R.drawable.ic_tab_list);
+		return res.getDrawable(R.drawable.ic_iconic_action_list);
+	}
+
+	public static Bitmap getTabIconFromFile(final File file, final Resources res) {
+		if (file == null || !file.exists()) return null;
+		final String path = file.getPath();
+		final BitmapFactory.Options o = new BitmapFactory.Options();
+		o.inJustDecodeBounds = true;
+		BitmapFactory.decodeFile(path, o);
+		if (o.outHeight <= 0 || o.outWidth <= 0) return null;
+		o.inSampleSize = (int) (Math.max(o.outWidth, o.outHeight) / (48 * res.getDisplayMetrics().density));
+		o.inJustDecodeBounds = false;
+		return BitmapFactory.decodeFile(path, o);
 	}
 
 	public static Object getTabIconObject(final String type) {
-		if (type == null) return R.drawable.ic_tab_list;
+		if (type == null) return R.drawable.ic_iconic_action_list;
 		final Integer value = CUSTOM_TABS_ICON_NAME_MAP.get(type);
 		if (value != null)
 			return value;
@@ -256,10 +291,10 @@ public class CustomTabUtils implements Constants {
 				final File file = new File(type);
 				if (file.exists()) return file;
 			} catch (final Exception e) {
-				return R.drawable.ic_tab_list;
+				return R.drawable.ic_iconic_action_list;
 			}
 		}
-		return R.drawable.ic_tab_list;
+		return R.drawable.ic_iconic_action_list;
 	}
 
 	public static String getTabTypeName(final Context context, final String type) {

@@ -1,47 +1,34 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.view;
 
-import static org.mariotaku.twidere.util.Utils.isRTL;
-
 import android.content.Context;
-import android.content.res.Resources;
-import android.content.res.TypedArray;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.widget.FrameLayout;
 
-import org.mariotaku.twidere.R;
 import org.mariotaku.twidere.view.iface.IColorLabelView;
 
 public class ColorLabelFrameLayout extends FrameLayout implements IColorLabelView {
 
-	private final Paint mPaintStart = new Paint(), mPaintEnd = new Paint(), mPaintBackground = new Paint();
-	private final Rect mRectStart = new Rect(), mRectEnd = new Rect(), mRectBackground = new Rect();
-	private final float mDensity;
-	private final boolean mIsRTL;
-
-	private boolean mIgnorePadding;
+	private final Helper mHelper;
 
 	public ColorLabelFrameLayout(final Context context) {
 		this(context, null);
@@ -53,73 +40,53 @@ public class ColorLabelFrameLayout extends FrameLayout implements IColorLabelVie
 
 	public ColorLabelFrameLayout(final Context context, final AttributeSet attrs, final int defStyle) {
 		super(context, attrs, defStyle);
-		final TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.Twidere);
-		mIgnorePadding = a.getBoolean(R.styleable.Twidere_ignorePadding, false);
-		a.recycle();
-		final Resources res = context.getResources();
-		mDensity = res.getDisplayMetrics().density;
-		mPaintStart.setColor(Color.TRANSPARENT);
-		mPaintEnd.setColor(Color.TRANSPARENT);
-		mPaintBackground.setColor(Color.TRANSPARENT);
-		mIsRTL = isRTL(context);
+		mHelper = new Helper(this, context, attrs, defStyle);
 	}
 
 	@Override
 	public void drawBackground(final int color) {
-		drawLabel(mPaintStart.getColor(), mPaintEnd.getColor(), color);
+		mHelper.drawBackground(color);
 	}
 
 	@Override
-	public void drawEnd(final int color) {
-		drawLabel(mPaintStart.getColor(), color, mPaintBackground.getColor());
+	public void drawBottom(final int... colors) {
+		mHelper.drawBottom(colors);
 	}
 
 	@Override
-	public void drawLabel(final int left, final int right, final int background) {
-		mPaintBackground.setColor(background);
-		mPaintStart.setColor(left);
-		mPaintEnd.setColor(right);
-		invalidate();
+	public void drawEnd(final int... colors) {
+		mHelper.drawEnd(colors);
 	}
 
 	@Override
-	public void drawStart(final int color) {
-		drawLabel(color, mPaintEnd.getColor(), mPaintBackground.getColor());
+	public void drawLabel(final int[] start, final int[] end, final int[] top, final int[] bottom, final int background) {
+		mHelper.drawLabel(start, end, top, bottom, background);
+	}
+
+	@Override
+	public void drawStart(final int... colors) {
+		mHelper.drawStart(colors);
+	}
+
+	@Override
+	public void drawTop(final int... colors) {
+		mHelper.drawTop(colors);
 	}
 
 	@Override
 	public boolean isPaddingsIgnored() {
-		return mIgnorePadding;
+		return mHelper.isPaddingsIgnored();
 	}
 
 	@Override
 	public void setIgnorePaddings(final boolean ignorePaddings) {
-		mIgnorePadding = ignorePaddings;
-		invalidate();
+		mHelper.setIgnorePaddings(ignorePaddings);
 	}
 
 	@Override
 	protected void dispatchDraw(final Canvas canvas) {
-		canvas.drawRect(mRectBackground, mPaintBackground);
+		mHelper.dispatchDrawBackground(canvas);
 		super.dispatchDraw(canvas);
-		canvas.drawRect(mRectStart, mPaintStart);
-		canvas.drawRect(mRectEnd, mPaintEnd);
-	}
-
-	@Override
-	protected void onSizeChanged(final int w, final int h, final int oldw, final int oldh) {
-		final int pl, pt, pr, pb;
-		if (mIgnorePadding) {
-			pl = pt = pr = pb = 0;
-		} else {
-			pl = getPaddingLeft();
-			pt = getPaddingTop();
-			pr = getPaddingRight();
-			pb = getPaddingBottom();
-		}
-		mRectBackground.set(pl, pt, w - pr, h - pb);
-		(mIsRTL ? mRectEnd : mRectStart).set(pl, pt, (int) (LABEL_WIDTH * mDensity) + pl, h - pb);
-		(mIsRTL ? mRectStart : mRectEnd).set(w - (int) (LABEL_WIDTH * mDensity) - pr, pt, w - pr, h - pb);
-		super.onSizeChanged(w, h, oldw, oldh);
+		mHelper.dispatchDrawLabels(canvas);
 	}
 }

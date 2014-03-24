@@ -43,8 +43,6 @@ Thanks to their excellent design!
 
 ### Open source projects ###
 
-* [ActionBar-PullToRefresh](https://github.com/chrisbanes/ActionBar-PullToRefresh), Copyright 2013 Chris Banes
-* [Android-PullToRefresh](https://github.com/chrisbanes/Android-PullToRefresh), Copyright 2013 Chris Banes
 * [Android-ViewPagerIndicator](https://github.com/JakeWharton/Android-ViewPagerIndicator/), Copyright 2012 Jake Wharton
 * [Android ViewBadger](https://github.com/jgilfelt/android-viewbadger), Copyright (c) 2012 readyState Software Ltd.
 * [Universal Image Loader for Android](https://github.com/nostra13/Android-Universal-Image-Loader), Copyright 2011-2013 Sergey Tarasevich
@@ -56,9 +54,17 @@ Thanks to their excellent design!
 * [twitter-text-java](https://github.com/twitter/twitter-text-java), Copyright 2011 Twitter, Inc.
 * [Twitter4J](https://github.com/yusuke/twitter4j), Copyright 2007-2013 Yusuke Yamamoto
 * [dnsjava](http://www.xbill.org/dnsjava/), Copyright 1999-2005, Brian Wellington
-* [TagSoup](http://ccil.org/~cowan/XML/tagsoup/), Copyright 2004 John Cowan
 * [HttpMime](http://hc.apache.org/httpcomponents-client-ga/httpmime/), Copyright 1999-2013 The Apache Software Foundation
 * [ACRA](http://github.com/ACRA/acra), Copyright 2013 Kevin Gaudin
+* [drag-sort-listview](https://github.com/bauerca/drag-sort-listview), Copyright 2012 Carl Bauer
+* [Android-MenuComponent](https://github.com/mariotaku/Android-MenuComponent), Copyright 2013 Mariotaku Lee
+* [RefreshNow](https://github.com/mariotaku/RefreshNow), Copyright 2014 Mariotaku Lee
+* [AndroidStaggeredGrid](https://github.com/etsy/AndroidStaggeredGrid), Copyright 2013 Etsy
+* [cwac-merge](https://github.com/commonsguy/cwac-merge), Copyright 2013 CommonsWare
+* [cwac-sacklist](https://github.com/commonsguy/cwac-sacklist), Copyright 2013 CommonsWare
+* [SlidingMenu](https://github.com/mariotaku/SlidingMenu) ([Original](https://github.com/jfeinstein10/SlidingMenu)), Copyright 2012 Jeremy Feinstein
+* [holoaccent](https://github.com/negusoft/holoaccent), Copyright 2013 NEGU Soft
+* [IconicDroid](https://github.com/mariotaku/IconicDroid) ([Original](https://github.com/atermenji/IconicDroid)), Copyright 2013 Artur Termenji
 
 ---
 
@@ -70,15 +76,19 @@ I started a crowdin project, so anyone can do something for Twidere. Visit this 
 
 ### Donation ###
 
-Thanks to @huxim 's memory stick!!!
-
-Buy me a bread or anything you want :)
-
-**Donate Via Paypal or Alipay(支付宝)**
+**Donation methods**
 
 PayPal: "mariotaku.lee#gmail.com".replace("#", "@");
 
 AliPay: http://me.alipay.com/mariotaku
+
+Bitcoin: 1FHAVAzge7cj1LfCTMfnLL49DgA3mVUCuW
+
+**Donators**
+
+[@TwidereProject/donators](https://twitter.com/TwidereProject/lists/donators), if you haven't find your name, please contact @TwidereProject :)
+
+Buy me a bread or anything you want :)
 
 ---
 
@@ -86,7 +96,7 @@ AliPay: http://me.alipay.com/mariotaku
 
 
     /*
-     * Copyright (C) 2012-2013 Mariotaku Lee <mariotaku.lee@gmail.com>
+     * Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
      *
      * This program is free software: you can redistribute it and/or modify
      * it under the terms of the GNU General Public License as published by
@@ -106,6 +116,6 @@ AliPay: http://me.alipay.com/mariotaku
 
 ## Notes ##
 
-<a name="note1" id="md-anchor"><sup>1</sup></a> : There's two version, one for Android 4.0+, another for Android 1.6 to Android 3.2, there will be less feature for legacy devices, but both of them has Holo style.
+<a name="note1" id="md-anchor"><sup>1</sup></a> : There're two versions, one for Android 4.0+, another for Android 1.6 to Android 3.2, there will be less feature for legacy devices, but both of them has Holo style.
 
 <a name="note2" id="md-anchor"><sup>2</sup></a> : Legacy device only support Dark and Light with dark ActionBar theme.

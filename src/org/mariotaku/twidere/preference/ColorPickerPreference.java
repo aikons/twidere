@@ -1,56 +1,53 @@
 /*
- * Copyright (C) 2011 Sergey Margaritov
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * 				Twidere - Twitter client for Android
+ * 
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.preference;
 
-import static org.mariotaku.twidere.util.Utils.getColorPreviewBitmap;
-
-import android.app.AlertDialog;
-import android.app.AlertDialog.Builder;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.res.Resources;
 import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
-import android.preference.DialogPreference;
+import android.preference.Preference;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewGroup.LayoutParams;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 
-import org.mariotaku.twidere.graphic.AlphaPatternDrawable;
-import org.mariotaku.twidere.util.ViewAccessor;
+import org.mariotaku.twidere.Constants;
+import org.mariotaku.twidere.R;
+import org.mariotaku.twidere.dialog.ColorPickerDialog;
 import org.mariotaku.twidere.view.ColorPickerView;
-import org.mariotaku.twidere.view.ColorPickerView.OnColorChangedListener;
 
-public class ColorPickerPreference extends DialogPreference implements DialogInterface.OnClickListener,
-		OnColorChangedListener {
+public class ColorPickerPreference extends Preference implements DialogInterface.OnClickListener, Constants {
 
 	private View mView;
 	protected int mDefaultValue = Color.WHITE;
-	private final float mDensity;
 	private boolean mAlphaSliderEnabled = false;
 
 	private static final String ANDROID_NS = "http://schemas.android.com/apk/res/android";
 	private static final String ATTR_DEFAULTVALUE = "defaultValue";
 	private static final String ATTR_ALPHASLIDER = "alphaSlider";
 
-	private ColorPickerView mColorPicker;
+	private final Resources mResources;
+
+	private ColorPickerDialog mDialog;
 
 	public ColorPickerPreference(final Context context, final AttributeSet attrs) {
 		this(context, attrs, android.R.attr.preferenceStyle);
@@ -58,15 +55,21 @@ public class ColorPickerPreference extends DialogPreference implements DialogInt
 
 	public ColorPickerPreference(final Context context, final AttributeSet attrs, final int defStyle) {
 		super(context, attrs, defStyle);
-		mDensity = context.getResources().getDisplayMetrics().density;
+		mResources = context.getResources();
 		init(context, attrs);
+	}
+
+	public void onActivityDestroy() {
+		if (mDialog == null || !mDialog.isShowing()) return;
+		mDialog.dismiss();
 	}
 
 	@Override
 	public void onClick(final DialogInterface dialog, final int which) {
 		switch (which) {
 			case DialogInterface.BUTTON_POSITIVE:
-				final int color = mColorPicker.getColor();
+				if (mDialog == null) return;
+				final int color = mDialog.getColor();
 				if (isPersistent()) {
 					persistInt(color);
 				}
@@ -77,14 +80,6 @@ public class ColorPickerPreference extends DialogPreference implements DialogInt
 				}
 				break;
 		}
-	}
-
-	@Override
-	public void onColorChanged(final int color) {
-		final AlertDialog dialog = (AlertDialog) getDialog();
-		if (dialog == null) return;
-		final Context context = getContext();
-		dialog.setIcon(new BitmapDrawable(context.getResources(), getColorPreviewBitmap(context, color)));
 	}
 
 	@Override
@@ -121,25 +116,13 @@ public class ColorPickerPreference extends DialogPreference implements DialogInt
 	}
 
 	@Override
-	protected void onPrepareDialogBuilder(final Builder builder) {
-		super.onPrepareDialogBuilder(builder);
-		final Context context = getContext();
-		final LinearLayout view = new LinearLayout(context);
-		view.setOrientation(LinearLayout.VERTICAL);
-
-		mColorPicker = new ColorPickerView(context);
-		mColorPicker.setOnColorChangedListener(this);
-
-		view.addView(mColorPicker, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
-		view.setPadding(Math.round(mColorPicker.getDrawingOffset()), 0, Math.round(mColorPicker.getDrawingOffset()), 0);
-
-		final int val = getValue();
-		mColorPicker.setColor(val, true);
-		mColorPicker.setAlphaSliderVisible(mAlphaSliderEnabled);
-		builder.setView(view);
-		builder.setIcon(new BitmapDrawable(context.getResources(), getColorPreviewBitmap(context, val)));
-		builder.setPositiveButton(android.R.string.ok, this);
-		builder.setNegativeButton(android.R.string.cancel, null);
+	protected void onClick() {
+		if (mDialog != null && mDialog.isShowing()) return;
+		mDialog = new ColorPickerDialog(getContext(), getValue(), mAlphaSliderEnabled);
+		mDialog.setButton(DialogInterface.BUTTON_POSITIVE, mResources.getString(android.R.string.ok), this);
+		mDialog.setButton(DialogInterface.BUTTON_NEGATIVE, mResources.getString(android.R.string.cancel), this);
+		mDialog.show();
+		return;
 	}
 
 	@Override
@@ -160,17 +143,23 @@ public class ColorPickerPreference extends DialogPreference implements DialogInt
 
 	private void setPreviewColor() {
 		if (mView == null) return;
-		final ImageView image_view = new ImageView(getContext());
-		final View widget_frame_view = mView.findViewById(android.R.id.widget_frame);
-		if (!(widget_frame_view instanceof ViewGroup)) return;
-		final ViewGroup widget_frame = (ViewGroup) widget_frame_view;
-		// widget_frame.setPadding(widget_frame.getPaddingLeft(),
-		// widget_frame.getPaddingTop(), (int) (mDensity * 8),
-		// widget_frame.getPaddingBottom());
-		// remove already create preview image
-		widget_frame.removeAllViews();
-		widget_frame.addView(image_view);
-		ViewAccessor.setBackground(image_view, new AlphaPatternDrawable((int) (5 * mDensity)));
-		image_view.setImageBitmap(getColorPreviewBitmap(getContext(), getValue()));
+		final View widgetFrameView = mView.findViewById(android.R.id.widget_frame);
+		if (!(widgetFrameView instanceof ViewGroup)) return;
+		final ViewGroup widgetFrame = (ViewGroup) widgetFrameView;
+		widgetFrame.setVisibility(View.VISIBLE);
+		// remove preview image that is already created
+		widgetFrame.setAlpha(isEnabled() ? 1 : 0.25f);
+		final View foundView = widgetFrame.findViewById(R.id.color);
+		final ImageView imageView;
+		if (foundView instanceof ImageView) {
+			imageView = (ImageView) foundView;
+		} else {
+			imageView = new ImageView(getContext());
+			widgetFrame.removeAllViews();
+			imageView.setId(R.id.color);
+			widgetFrame.addView(imageView);
+		}
+		imageView.setImageBitmap(ColorPickerView.getColorPreviewBitmap(getContext(), getValue()));
 	}
+
 }

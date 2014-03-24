@@ -1,28 +1,28 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.task;
 
-import static org.mariotaku.twidere.util.ContentResolverUtils.bulkDelete;
-import static org.mariotaku.twidere.util.ContentResolverUtils.bulkInsert;
-import static org.mariotaku.twidere.util.Utils.makeCachedUserContentValues;
-import static org.mariotaku.twidere.util.Utils.makeStatusContentValues;
+import static org.mariotaku.twidere.util.ContentValuesCreator.makeCachedUserContentValues;
+import static org.mariotaku.twidere.util.ContentValuesCreator.makeStatusContentValues;
+import static org.mariotaku.twidere.util.content.ContentResolverUtils.bulkDelete;
+import static org.mariotaku.twidere.util.content.ContentResolverUtils.bulkInsert;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -30,12 +30,12 @@ import android.content.Context;
 
 import com.twitter.Extractor;
 
+import org.mariotaku.querybuilder.Where;
 import org.mariotaku.twidere.Constants;
-import org.mariotaku.twidere.R;
 import org.mariotaku.twidere.provider.TweetStore.CachedHashtags;
 import org.mariotaku.twidere.provider.TweetStore.CachedStatuses;
 import org.mariotaku.twidere.provider.TweetStore.CachedUsers;
-import org.mariotaku.twidere.util.AsyncTask;
+import org.mariotaku.twidere.provider.TweetStore.Filters;
 import org.mariotaku.twidere.util.TwitterWrapper.TwitterListResponse;
 
 import twitter4j.User;
@@ -48,22 +48,20 @@ public class CacheUsersStatusesTask extends AsyncTask<Void, Void, Void> implemen
 
 	private final TwitterListResponse<twitter4j.Status>[] all_statuses;
 	private final ContentResolver resolver;
-	private final boolean large_profile_image;
 
 	public CacheUsersStatusesTask(final Context context, final TwitterListResponse<twitter4j.Status>... all_statuses) {
 		resolver = context.getContentResolver();
 		this.all_statuses = all_statuses;
-		large_profile_image = context.getResources().getBoolean(R.bool.hires_profile_image);
 	}
 
 	@Override
 	protected Void doInBackground(final Void... args) {
 		if (all_statuses == null || all_statuses.length == 0) return null;
 		final Extractor extractor = new Extractor();
-		final Set<ContentValues> cached_users_values = new HashSet<ContentValues>();
+		final Set<ContentValues> cachedUsersValues = new HashSet<ContentValues>();
 		final Set<ContentValues> cached_statuses_values = new HashSet<ContentValues>();
 		final Set<ContentValues> hashtag_values = new HashSet<ContentValues>();
-		final Set<Long> user_ids = new HashSet<Long>();
+		final Set<Long> userIds = new HashSet<Long>();
 		final Set<Long> status_ids = new HashSet<Long>();
 		final Set<String> hashtags = new HashSet<String>();
 		final Set<User> users = new HashSet<User>();
@@ -78,11 +76,16 @@ public class CacheUsersStatusesTask extends AsyncTask<Void, Void, Void> implemen
 					continue;
 				}
 				status_ids.add(status.getId());
-				cached_statuses_values.add(makeStatusContentValues(status, values.account_id, large_profile_image));
+				cached_statuses_values.add(makeStatusContentValues(status, values.account_id));
 				hashtags.addAll(extractor.extractHashtags(status.getText()));
 				final User user = status.getUser();
 				if (user != null && user.getId() > 0) {
 					users.add(user);
+					final ContentValues filtered_users_values = new ContentValues();
+					filtered_users_values.put(Filters.Users.NAME, user.getName());
+					filtered_users_values.put(Filters.Users.SCREEN_NAME, user.getScreenName());
+					final String filtered_users_where = Where.equals(Filters.Users.USER_ID, user.getId()).getSQL();
+					resolver.update(Filters.Users.CONTENT_URI, filtered_users_values, filtered_users_where, null);
 				}
 			}
 		}
@@ -99,18 +102,17 @@ public class CacheUsersStatusesTask extends AsyncTask<Void, Void, Void> implemen
 		bulkInsert(resolver, CachedHashtags.CONTENT_URI, hashtag_values);
 
 		for (final User user : users) {
-			user_ids.add(user.getId());
-			cached_users_values.add(makeCachedUserContentValues(user, large_profile_image));
+			userIds.add(user.getId());
+			cachedUsersValues.add(makeCachedUserContentValues(user));
 		}
-		bulkDelete(resolver, CachedUsers.CONTENT_URI, CachedUsers.USER_ID, user_ids, null, false);
-		bulkInsert(resolver, CachedUsers.CONTENT_URI, cached_users_values);
+		bulkDelete(resolver, CachedUsers.CONTENT_URI, CachedUsers.USER_ID, userIds, null, false);
+		bulkInsert(resolver, CachedUsers.CONTENT_URI, cachedUsersValues);
 		return null;
 	}
 
 	public static Runnable getRunnable(final Context context,
 			final TwitterListResponse<twitter4j.Status>... all_statuses) {
 		return new ExecuteCacheUserStatusesTaskRunnable(context, all_statuses);
-
 	}
 
 	static class ExecuteCacheUserStatusesTaskRunnable implements Runnable {

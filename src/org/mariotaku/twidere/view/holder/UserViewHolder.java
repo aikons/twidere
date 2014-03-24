@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.view.holder;
@@ -25,20 +25,18 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import org.mariotaku.twidere.R;
-import org.mariotaku.twidere.view.iface.IColorLabelView;
 
 public class UserViewHolder extends CardViewHolder {
 
 	public final ImageView profile_image;
 	public final TextView name, screen_name, description, location, url, statuses_count, followers_count,
 			friends_count;
-	private final IColorLabelView content;
 	private boolean account_color_enabled;
 	private float text_size;
+	public int position;
 
 	public UserViewHolder(final View view) {
 		super(view);
-		content = (IColorLabelView) findViewById(R.id.content);
 		profile_image = (ImageView) findViewById(R.id.profile_image);
 		name = (TextView) findViewById(R.id.name);
 		screen_name = (TextView) findViewById(R.id.screen_name);

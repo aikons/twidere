@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.model;
@@ -22,7 +22,6 @@ package org.mariotaku.twidere.model;
 import static org.mariotaku.twidere.util.HtmlEscapeHelper.toPlainText;
 import static org.mariotaku.twidere.util.Utils.formatExpandedUserDescription;
 import static org.mariotaku.twidere.util.Utils.formatUserDescription;
-import static org.mariotaku.twidere.util.Utils.getBiggerTwitterProfileImage;
 
 import android.content.ContentValues;
 import android.database.Cursor;
@@ -157,14 +156,13 @@ public class ParcelableUser implements Parcelable, JSONParcelable, Comparable<Pa
 		description_unescaped = in.readString();
 	}
 
-	public ParcelableUser(final User user, final long account_id, final boolean large_profile_image) {
-		this(user, account_id, 0, large_profile_image);
+	public ParcelableUser(final User user, final long account_id) {
+		this(user, account_id, 0);
 	}
 
-	public ParcelableUser(final User user, final long account_id, final long position, final boolean large_profile_image) {
+	public ParcelableUser(final User user, final long account_id, final long position) {
 		this.position = position;
 		this.account_id = account_id;
-		final String profile_image_url_orig = ParseUtils.parseString(user.getProfileImageUrlHttps());
 		final URLEntity[] urls_url_entities = user.getURLEntities();
 		id = user.getId();
 		created_at = getTime(user.getCreatedAt());
@@ -176,8 +174,7 @@ public class ParcelableUser implements Parcelable, JSONParcelable, Comparable<Pa
 		description_html = formatUserDescription(user);
 		description_expanded = formatExpandedUserDescription(user);
 		location = user.getLocation();
-		profile_image_url = large_profile_image ? getBiggerTwitterProfileImage(profile_image_url_orig)
-				: profile_image_url_orig;
+		profile_image_url = ParseUtils.parseString(user.getProfileImageUrlHttps());
 		profile_banner_url = user.getProfileBannerImageUrl();
 		url = ParseUtils.parseString(user.getURL());
 		url_expanded = url != null && urls_url_entities != null && urls_url_entities.length > 0 ? ParseUtils
@@ -295,10 +292,6 @@ public class ParcelableUser implements Parcelable, JSONParcelable, Comparable<Pa
 		out.writeString(description_unescaped);
 	}
 
-	private long getTime(final Date date) {
-		return date != null ? date.getTime() : 0;
-	}
-
 	public static ContentValues makeCachedUserContentValues(final ParcelableUser user) {
 		if (user == null) return null;
 		final ContentValues values = new ContentValues();
@@ -322,5 +315,9 @@ public class ParcelableUser implements Parcelable, JSONParcelable, Comparable<Pa
 		values.put(CachedUsers.PROFILE_BANNER_URL, user.profile_banner_url);
 		values.put(CachedUsers.IS_FOLLOWING, user.is_following);
 		return values;
+	}
+
+	private static long getTime(final Date date) {
+		return date != null ? date.getTime() : 0;
 	}
 }

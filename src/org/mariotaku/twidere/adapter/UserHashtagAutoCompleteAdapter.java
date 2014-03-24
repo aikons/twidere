@@ -1,29 +1,30 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.adapter;
 
-import static org.mariotaku.twidere.util.Utils.getUserNickname;
+import static org.mariotaku.twidere.util.UserColorNicknameUtils.getUserNickname;
 
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.support.v4.widget.SimpleCursorAdapter;
@@ -39,6 +40,7 @@ import org.mariotaku.querybuilder.RawItemArray;
 import org.mariotaku.querybuilder.Where;
 import org.mariotaku.twidere.Constants;
 import org.mariotaku.twidere.R;
+import org.mariotaku.twidere.activity.iface.IThemedActivity;
 import org.mariotaku.twidere.app.TwidereApplication;
 import org.mariotaku.twidere.provider.TweetStore.CachedHashtags;
 import org.mariotaku.twidere.provider.TweetStore.CachedUsers;
@@ -46,9 +48,11 @@ import org.mariotaku.twidere.provider.TweetStore.CachedValues;
 import org.mariotaku.twidere.util.ArrayUtils;
 import org.mariotaku.twidere.util.ImageLoaderWrapper;
 import org.mariotaku.twidere.util.ParseUtils;
+import org.mariotaku.twidere.util.ThemeUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map.Entry;
 
 public class UserHashtagAutoCompleteAdapter extends SimpleCursorAdapter implements Constants {
@@ -57,11 +61,13 @@ public class UserHashtagAutoCompleteAdapter extends SimpleCursorAdapter implemen
 	private static final int[] TO = new int[0];
 	private static final String[] CACHED_USERS_COLUMNS = new String[] { CachedUsers._ID, CachedUsers.USER_ID,
 			CachedUsers.NAME, CachedUsers.SCREEN_NAME, CachedUsers.PROFILE_IMAGE_URL };
+	private final Locale mLocale;
 
 	private final ContentResolver mResolver;
 	private final SQLiteDatabase mDatabase;
 	private final ImageLoaderWrapper mProfileImageLoader;
 	private final SharedPreferences mPreferences, mUserNicknamePreferences;
+	private final Resources mResources;
 
 	private final EditText mEditText;
 
@@ -75,7 +81,7 @@ public class UserHashtagAutoCompleteAdapter extends SimpleCursorAdapter implemen
 	}
 
 	public UserHashtagAutoCompleteAdapter(final Context context, final EditText view) {
-		super(context, R.layout.two_line_list_item_small, null, FROM, TO, 0);
+		super(context, R.layout.list_item_two_line_small, null, FROM, TO, 0);
 		mEditText = view;
 		mPreferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
 		mUserNicknamePreferences = context.getSharedPreferences(USER_NICKNAME_PREFERENCES_NAME, Context.MODE_PRIVATE);
@@ -83,9 +89,18 @@ public class UserHashtagAutoCompleteAdapter extends SimpleCursorAdapter implemen
 		final TwidereApplication app = TwidereApplication.getInstance(context);
 		mProfileImageLoader = app != null ? app.getImageLoaderWrapper() : null;
 		mDatabase = app != null ? app.getSQLiteDatabase() : null;
-		mDisplayProfileImage = mPreferences != null
-				&& mPreferences.getBoolean(PREFERENCE_KEY_DISPLAY_PROFILE_IMAGE, true);
-		mNicknameOnly = mPreferences != null && mPreferences.getBoolean(PREFERENCE_KEY_NICKNAME_ONLY, false);
+		mDisplayProfileImage = mPreferences != null && mPreferences.getBoolean(KEY_DISPLAY_PROFILE_IMAGE, true);
+		mNicknameOnly = mPreferences != null && mPreferences.getBoolean(KEY_NICKNAME_ONLY, false);
+		mLocale = context.getResources().getConfiguration().locale;
+		final int themeRes, accentColor;
+		if (context instanceof IThemedActivity) {
+			themeRes = ((IThemedActivity) context).getThemeResourceId();
+			accentColor = ((IThemedActivity) context).getThemeColor();
+		} else {
+			themeRes = ThemeUtils.getThemeResource(context);
+			accentColor = ThemeUtils.getUserThemeColor(context);
+		}
+		mResources = ThemeUtils.getAccentResourcesForActionIcons(context, themeRes, accentColor);
 	}
 
 	public UserHashtagAutoCompleteAdapter(final EditText view) {
@@ -98,6 +113,10 @@ public class UserHashtagAutoCompleteAdapter extends SimpleCursorAdapter implemen
 		final TextView text1 = (TextView) view.findViewById(android.R.id.text1);
 		final TextView text2 = (TextView) view.findViewById(android.R.id.text2);
 		final ImageView icon = (ImageView) view.findViewById(android.R.id.icon);
+
+		// Clear images in prder to prevent images in recycled view shown.
+		icon.setImageDrawable(null);
+
 		if (mScreenNameIdx != -1 && mNameIdx != -1 && mUserIdIdx != -1) {
 			final String nick = getUserNickname(context, cursor.getLong(mUserIdIdx));
 			final String name = cursor.getString(mNameIdx);
@@ -120,7 +139,7 @@ public class UserHashtagAutoCompleteAdapter extends SimpleCursorAdapter implemen
 				icon.setImageResource(R.drawable.ic_profile_image_default);
 			}
 		} else {
-			icon.setImageResource(R.drawable.ic_menu_hashtag);
+			icon.setImageDrawable(mResources.getDrawable(R.drawable.ic_iconic_action_hashtag));
 		}
 		super.bindView(view, context, cursor);
 	}
@@ -199,7 +218,7 @@ public class UserHashtagAutoCompleteAdapter extends SimpleCursorAdapter implemen
 			if (key == -1 || TextUtils.isEmpty(value)) {
 				continue;
 			}
-			if (value.toLowerCase().startsWith(str.toLowerCase())) {
+			if (value.toLowerCase(mLocale).startsWith(str.toLowerCase(mLocale))) {
 				list.add(key);
 			}
 		}

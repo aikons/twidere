@@ -1,29 +1,28 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.model;
 
-import static org.mariotaku.twidere.util.ContentValuesUtils.getAsBoolean;
-import static org.mariotaku.twidere.util.ContentValuesUtils.getAsLong;
 import static org.mariotaku.twidere.util.HtmlEscapeHelper.toPlainText;
 import static org.mariotaku.twidere.util.Utils.formatDirectMessageText;
-import static org.mariotaku.twidere.util.Utils.getBiggerTwitterProfileImage;
+import static org.mariotaku.twidere.util.content.ContentValuesUtils.getAsBoolean;
+import static org.mariotaku.twidere.util.content.ContentValuesUtils.getAsLong;
 
 import android.content.ContentValues;
 import android.database.Cursor;
@@ -55,7 +54,6 @@ public class ParcelableDirectMessage implements Parcelable, Serializable, Compar
 			return new ParcelableDirectMessage[size];
 		}
 	};
-
 	public static final Comparator<ParcelableDirectMessage> MESSAGE_ID_COMPARATOR = new Comparator<ParcelableDirectMessage>() {
 
 		@Override
@@ -70,11 +68,12 @@ public class ParcelableDirectMessage implements Parcelable, Serializable, Compar
 	public final long account_id, id, timestamp;
 
 	public final long sender_id, recipient_id;
-	public final boolean is_out_going;
 
+	public final boolean is_outgoing;
 	public final String text_html, text_plain, text_unescaped;
 
 	public final String sender_name, recipient_name, sender_screen_name, recipient_screen_name;
+
 	public final String sender_profile_image_url, recipient_profile_image_url;
 
 	public ParcelableDirectMessage(final ContentValues values) {
@@ -91,13 +90,13 @@ public class ParcelableDirectMessage implements Parcelable, Serializable, Compar
 		recipient_id = getAsLong(values, DirectMessages.RECIPIENT_ID, -1);
 		timestamp = getAsLong(values, DirectMessages.MESSAGE_TIMESTAMP, -1);
 		id = getAsLong(values, DirectMessages.MESSAGE_ID, -1);
-		is_out_going = getAsBoolean(values, DirectMessages.IS_OUTGOING, false);
+		is_outgoing = getAsBoolean(values, DirectMessages.IS_OUTGOING, false);
 		account_id = getAsLong(values, DirectMessages.ACCOUNT_ID, -1);
 	}
 
-	public ParcelableDirectMessage(final Cursor cursor, final DirectMessageCursorIndices indices) {
+	public ParcelableDirectMessage(final Cursor cursor, final CursorIndices indices) {
 		account_id = indices.account_id != -1 ? cursor.getLong(indices.account_id) : -1;
-		is_out_going = indices.is_outgoing != -1 ? cursor.getShort(indices.is_outgoing) == 1 : null;
+		is_outgoing = indices.is_outgoing != -1 ? cursor.getShort(indices.is_outgoing) == 1 : null;
 		id = indices.message_id != -1 ? cursor.getLong(indices.message_id) : -1;
 		timestamp = indices.message_timestamp != -1 ? cursor.getLong(indices.message_timestamp) : -1;
 		sender_id = indices.sender_id != -1 ? cursor.getLong(indices.sender_id) : -1;
@@ -116,10 +115,9 @@ public class ParcelableDirectMessage implements Parcelable, Serializable, Compar
 				.getString(indices.recipient_profile_image_url) : null;
 	}
 
-	public ParcelableDirectMessage(final DirectMessage message, final long account_id, final boolean is_outgoing,
-			final boolean large_profile_image) {
+	public ParcelableDirectMessage(final DirectMessage message, final long account_id, final boolean is_outgoing) {
 		this.account_id = account_id;
-		is_out_going = is_outgoing;
+		this.is_outgoing = is_outgoing;
 		final User sender = message.getSender(), recipient = message.getRecipient();
 		final String sender_profile_image_url_string = sender != null ? ParseUtils.parseString(sender
 				.getProfileImageUrlHttps()) : null;
@@ -135,10 +133,8 @@ public class ParcelableDirectMessage implements Parcelable, Serializable, Compar
 		recipient_name = recipient != null ? recipient.getName() : null;
 		sender_screen_name = sender != null ? sender.getScreenName() : null;
 		recipient_screen_name = recipient != null ? recipient.getScreenName() : null;
-		sender_profile_image_url = large_profile_image ? getBiggerTwitterProfileImage(sender_profile_image_url_string)
-				: sender_profile_image_url_string;
-		recipient_profile_image_url = large_profile_image ? getBiggerTwitterProfileImage(recipient_profile_image_url_string)
-				: recipient_profile_image_url_string;
+		sender_profile_image_url = sender_profile_image_url_string;
+		recipient_profile_image_url = recipient_profile_image_url_string;
 		text_unescaped = toPlainText(text_html);
 	}
 
@@ -148,7 +144,7 @@ public class ParcelableDirectMessage implements Parcelable, Serializable, Compar
 		timestamp = in.readLong();
 		sender_id = in.readLong();
 		recipient_id = in.readLong();
-		is_out_going = in.readInt() == 1;
+		is_outgoing = in.readInt() == 1;
 		text_html = in.readString();
 		text_plain = in.readString();
 		sender_name = in.readString();
@@ -157,7 +153,7 @@ public class ParcelableDirectMessage implements Parcelable, Serializable, Compar
 		recipient_screen_name = in.readString();
 		sender_profile_image_url = in.readString();
 		recipient_profile_image_url = in.readString();
-		text_unescaped = toPlainText(text_html);
+		text_unescaped = in.readString();
 	}
 
 	@Override
@@ -197,7 +193,7 @@ public class ParcelableDirectMessage implements Parcelable, Serializable, Compar
 	@Override
 	public String toString() {
 		return "ParcelableDirectMessage{account_id=" + account_id + ", id=" + id + ", timestamp=" + timestamp
-				+ ", sender_id=" + sender_id + ", recipient_id=" + recipient_id + ", is_out_going=" + is_out_going
+				+ ", sender_id=" + sender_id + ", recipient_id=" + recipient_id + ", is_outgoing=" + is_outgoing
 				+ ", text_html=" + text_html + ", text_plain=" + text_plain + ", text_unescaped=" + text_unescaped
 				+ ", sender_name=" + sender_name + ", recipient_name=" + recipient_name + ", sender_screen_name="
 				+ sender_screen_name + ", recipient_screen_name=" + recipient_screen_name
@@ -212,7 +208,7 @@ public class ParcelableDirectMessage implements Parcelable, Serializable, Compar
 		out.writeLong(timestamp);
 		out.writeLong(sender_id);
 		out.writeLong(recipient_id);
-		out.writeInt(is_out_going ? 1 : 0);
+		out.writeInt(is_outgoing ? 1 : 0);
 		out.writeString(text_html);
 		out.writeString(text_plain);
 		out.writeString(sender_name);
@@ -221,9 +217,34 @@ public class ParcelableDirectMessage implements Parcelable, Serializable, Compar
 		out.writeString(recipient_screen_name);
 		out.writeString(sender_profile_image_url);
 		out.writeString(recipient_profile_image_url);
+		out.writeString(text_unescaped);
 	}
 
-	private long getTime(final Date date) {
+	private static long getTime(final Date date) {
 		return date != null ? date.getTime() : 0;
+	}
+
+	public static class CursorIndices {
+
+		public final int account_id, message_id, message_timestamp, sender_name, sender_screen_name, text, text_plain,
+				recipient_name, recipient_screen_name, sender_profile_image_url, is_outgoing,
+				recipient_profile_image_url, sender_id, recipient_id;
+
+		public CursorIndices(final Cursor cursor) {
+			account_id = cursor.getColumnIndex(DirectMessages.ACCOUNT_ID);
+			message_id = cursor.getColumnIndex(DirectMessages.MESSAGE_ID);
+			message_timestamp = cursor.getColumnIndex(DirectMessages.MESSAGE_TIMESTAMP);
+			sender_id = cursor.getColumnIndex(DirectMessages.SENDER_ID);
+			recipient_id = cursor.getColumnIndex(DirectMessages.RECIPIENT_ID);
+			is_outgoing = cursor.getColumnIndex(DirectMessages.IS_OUTGOING);
+			text = cursor.getColumnIndex(DirectMessages.TEXT_HTML);
+			text_plain = cursor.getColumnIndex(DirectMessages.TEXT_PLAIN);
+			sender_name = cursor.getColumnIndex(DirectMessages.SENDER_NAME);
+			recipient_name = cursor.getColumnIndex(DirectMessages.RECIPIENT_NAME);
+			sender_screen_name = cursor.getColumnIndex(DirectMessages.SENDER_SCREEN_NAME);
+			recipient_screen_name = cursor.getColumnIndex(DirectMessages.RECIPIENT_SCREEN_NAME);
+			sender_profile_image_url = cursor.getColumnIndex(DirectMessages.SENDER_PROFILE_IMAGE_URL);
+			recipient_profile_image_url = cursor.getColumnIndex(DirectMessages.RECIPIENT_PROFILE_IMAGE_URL);
+		}
 	}
 }

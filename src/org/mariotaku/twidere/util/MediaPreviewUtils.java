@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.util;
@@ -22,16 +22,24 @@ package org.mariotaku.twidere.util;
 import static android.text.TextUtils.isEmpty;
 import static org.mariotaku.twidere.util.Utils.matcherGroup;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.mariotaku.twidere.model.PreviewMedia;
 import org.mariotaku.twidere.util.HtmlLinkExtractor.HtmlLink;
 
 import twitter4j.MediaEntity;
 import twitter4j.Status;
+import twitter4j.TwitterException;
 import twitter4j.URLEntity;
+import twitter4j.http.HttpClientWrapper;
+import twitter4j.http.HttpParameter;
+import twitter4j.http.HttpResponse;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -174,55 +182,67 @@ public class MediaPreviewUtils {
 			PATTERN_IMGUR, PATTERN_IMGLY, PATTERN_YFROG, PATTERN_LOCKERZ, PATTERN_PLIXI, PATTERN_TWITGOO,
 			PATTERN_MOBYPICTURE, PATTERN_PHOTOZOU };
 
-	public static PreviewMedia getAllAvailableImage(final String link, final boolean use_full) {
+	private static final String URL_PHOTOZOU_PHOTO_INFO = "https://api.photozou.jp/rest/photo_info.json";
+
+	public static PreviewMedia getAllAvailableImage(final String link, final boolean fullImage) {
+		try {
+			return getAllAvailableImage(link, fullImage, null);
+		} catch (final IOException e) {
+			throw new AssertionError("This should never happen");
+		}
+	}
+
+	public static PreviewMedia getAllAvailableImage(final String link, final boolean fullImage,
+			final HttpClientWrapper client) throws IOException {
 		if (link == null) return null;
+		StrictModeUtils.checkLengthyOperation();
 		Matcher m;
 		m = PATTERN_TWITTER_IMAGES.matcher(link);
-		if (m.matches()) return getTwitterImage(link, use_full);
+		if (m.matches()) return getTwitterImage(link, fullImage);
 		m = PATTERN_INSTAGRAM.matcher(link);
-		if (m.matches()) return getInstagramImage(matcherGroup(m, INSTAGRAM_GROUP_ID), link, use_full);
+		if (m.matches()) return getInstagramImage(matcherGroup(m, INSTAGRAM_GROUP_ID), link, fullImage);
 		m = PATTERN_GOOGLE_IMAGES.matcher(link);
 		if (m.matches())
 			return getGoogleImage(matcherGroup(m, GOOGLE_IMAGES_GROUP_SERVER), matcherGroup(m, GOOGLE_IMAGES_GROUP_ID),
-					use_full);
+					fullImage);
 		m = PATTERN_GOOGLE_PROXY_IMAGES.matcher(link);
 		if (m.matches())
 			return getGoogleProxyImage(matcherGroup(m, GOOGLE_PROXY_IMAGES_GROUP_SERVER),
-					matcherGroup(m, GOOGLE_PROXY_IMAGES_GROUP_ID), use_full);
+					matcherGroup(m, GOOGLE_PROXY_IMAGES_GROUP_ID), fullImage);
 		m = PATTERN_SINA_WEIBO_IMAGES.matcher(link);
-		if (m.matches()) return getSinaWeiboImage(link, use_full);
+		if (m.matches()) return getSinaWeiboImage(link, fullImage);
 		m = PATTERN_TWITPIC.matcher(link);
-		if (m.matches()) return getTwitpicImage(matcherGroup(m, TWITPIC_GROUP_ID), link, use_full);
+		if (m.matches()) return getTwitpicImage(matcherGroup(m, TWITPIC_GROUP_ID), link, fullImage);
 		m = PATTERN_IMGUR.matcher(link);
-		if (m.matches()) return getImgurImage(matcherGroup(m, IMGUR_GROUP_ID), link, use_full);
+		if (m.matches()) return getImgurImage(matcherGroup(m, IMGUR_GROUP_ID), link, fullImage);
 		m = PATTERN_IMGLY.matcher(link);
-		if (m.matches()) return getImglyImage(matcherGroup(m, IMGLY_GROUP_ID), link, use_full);
+		if (m.matches()) return getImglyImage(matcherGroup(m, IMGLY_GROUP_ID), link, fullImage);
 		m = PATTERN_YFROG.matcher(link);
-		if (m.matches()) return getYfrogImage(matcherGroup(m, YFROG_GROUP_ID), link, use_full);
+		if (m.matches()) return getYfrogImage(matcherGroup(m, YFROG_GROUP_ID), link, fullImage);
 		m = PATTERN_LOCKERZ.matcher(link);
-		if (m.matches()) return getLockerzAndPlixiImage(link, use_full);
+		if (m.matches()) return getLockerzAndPlixiImage(link, fullImage);
 		m = PATTERN_PLIXI.matcher(link);
-		if (m.matches()) return getLockerzAndPlixiImage(link, use_full);
+		if (m.matches()) return getLockerzAndPlixiImage(link, fullImage);
 		m = PATTERN_TWITGOO.matcher(link);
-		if (m.matches()) return getTwitgooImage(matcherGroup(m, TWITGOO_GROUP_ID), link, use_full);
+		if (m.matches()) return getTwitgooImage(matcherGroup(m, TWITGOO_GROUP_ID), link, fullImage);
 		m = PATTERN_MOBYPICTURE.matcher(link);
-		if (m.matches()) return getMobyPictureImage(matcherGroup(m, MOBYPICTURE_GROUP_ID), link, use_full);
+		if (m.matches()) return getMobyPictureImage(matcherGroup(m, MOBYPICTURE_GROUP_ID), link, fullImage);
 		m = PATTERN_PHOTOZOU.matcher(link);
-		if (m.matches()) return getPhotozouImage(matcherGroup(m, PHOTOZOU_GROUP_ID), link, use_full);
+		if (m.matches()) return getPhotozouImage(client, matcherGroup(m, PHOTOZOU_GROUP_ID), link, fullImage);
 		return null;
 	}
 
-	public static List<PreviewMedia> getImagesInStatus(final String status_string, final boolean use_full) {
-		if (status_string == null) return Collections.emptyList();
+	public static PreviewMedia[] getImagesInStatus(final String status_string, final boolean fullImage) {
+		if (status_string == null) return new PreviewMedia[0];
 		final List<PreviewMedia> images = new ArrayList<PreviewMedia>();
 		final HtmlLinkExtractor extractor = new HtmlLinkExtractor();
 		for (final HtmlLink link : extractor.grabLinks(status_string)) {
-			final PreviewMedia spec = getAllAvailableImage(link.getLink(), use_full);
+			final PreviewMedia spec = getAllAvailableImage(link.getLink(), fullImage);
 			if (spec != null) {
 				images.add(spec);
 			}
 		}
-		return images;
+		return images.toArray(new PreviewMedia[images.size()]);
 	}
 
 	public static String getSupportedFirstLink(final Status status) {
@@ -261,11 +281,11 @@ public class MediaPreviewUtils {
 		return null;
 	}
 
-	public static List<String> getSupportedLinksInStatus(final String status_string) {
-		if (status_string == null) return Collections.emptyList();
+	public static List<String> getSupportedLinksInStatus(final String statusString) {
+		if (statusString == null) return Collections.emptyList();
 		final List<String> links = new ArrayList<String>();
 		final HtmlLinkExtractor extractor = new HtmlLinkExtractor();
-		for (final HtmlLink link : extractor.grabLinks(status_string)) {
+		for (final HtmlLink link : extractor.grabLinks(statusString)) {
 			final String spec = getSupportedLink(link.getLink());
 			if (spec != null) {
 				links.add(spec);
@@ -274,90 +294,112 @@ public class MediaPreviewUtils {
 		return links;
 	}
 
-	private static PreviewMedia getGoogleImage(final String server, final String id, final boolean use_full) {
+	public static boolean isLinkSupported(final String link) {
+		if (link == null) return false;
+		for (final Pattern pattern : SUPPORTED_PATTERNS) {
+			if (pattern.matcher(link).matches()) return true;
+		}
+		return false;
+	}
+
+	private static PreviewMedia getGoogleImage(final String server, final String id, final boolean fullImage) {
 		if (isEmpty(server) || isEmpty(id)) return null;
 		final String full = "https://" + server + id + "/s0/full";
-		final String preview = use_full ? full : "https://" + server + id + "/s480/full";
-		return new PreviewMedia(preview, full);
+		final String preview = fullImage ? full : "https://" + server + id + "/s480/full";
+		return PreviewMedia.newImage(preview, full);
 	}
 
-	private static PreviewMedia getGoogleProxyImage(final String server, final String id, final boolean use_full) {
+	private static PreviewMedia getGoogleProxyImage(final String server, final String id, final boolean fullImage) {
 		if (isEmpty(server) || isEmpty(id)) return null;
 		final String full = "https://" + server + "/proxy/" + id + "=s0";
-		final String preview = use_full ? full : "https://" + server + "/proxy/" + id + "=s480";
-		return new PreviewMedia(preview, full);
+		final String preview = fullImage ? full : "https://" + server + "/proxy/" + id + "=s480";
+		return PreviewMedia.newImage(preview, full);
 	}
 
-	private static PreviewMedia getImglyImage(final String id, final String orig, final boolean use_full) {
+	private static PreviewMedia getImglyImage(final String id, final String orig, final boolean fullImage) {
 		if (isEmpty(id)) return null;
-		final String preview = String.format("http://img.ly/show/%s/%s", use_full ? "full" : "medium", id);
-		return new PreviewMedia(preview, orig);
+		final String preview = String.format("http://img.ly/show/%s/%s", fullImage ? "full" : "medium", id);
+		return PreviewMedia.newImage(preview, orig);
 	}
 
-	private static PreviewMedia getImgurImage(final String id, final String orig, final boolean use_full) {
+	private static PreviewMedia getImgurImage(final String id, final String orig, final boolean fullImage) {
 		if (isEmpty(id)) return null;
-		final String preview = use_full ? String.format("http://i.imgur.com/%s.jpg", id) : String.format(
+		final String preview = fullImage ? String.format("http://i.imgur.com/%s.jpg", id) : String.format(
 				"http://i.imgur.com/%sl.jpg", id);
-		return new PreviewMedia(preview, orig);
+		return PreviewMedia.newImage(preview, orig);
 	}
 
-	private static PreviewMedia getInstagramImage(final String id, final String orig, final boolean use_full) {
+	private static PreviewMedia getInstagramImage(final String id, final String orig, final boolean fullImage) {
 		if (isEmpty(id)) return null;
-		final String preview = String.format("https://instagr.am/p/%s/media/?size=%s", id, use_full ? "l" : "t");
-		return new PreviewMedia(preview, orig);
+		final String preview = String.format("https://instagr.am/p/%s/media/?size=%s", id, fullImage ? "l" : "t");
+		return PreviewMedia.newImage(preview, orig);
 	}
 
-	private static PreviewMedia getLockerzAndPlixiImage(final String url, final boolean use_full) {
+	private static PreviewMedia getLockerzAndPlixiImage(final String url, final boolean fullImage) {
 		if (isEmpty(url)) return null;
 		final String preview = String.format("https://api.plixi.com/api/tpapi.svc/imagefromurl?url=%s&size=%s", url,
-				use_full ? "big" : "small");
-		return new PreviewMedia(preview, url);
+				fullImage ? "big" : "small");
+		return PreviewMedia.newImage(preview, url);
 
 	}
 
-	private static PreviewMedia getMobyPictureImage(final String id, final String orig, final boolean use_full) {
+	private static PreviewMedia getMobyPictureImage(final String id, final String orig, final boolean fullImage) {
 		if (isEmpty(id)) return null;
-		final String preview = String.format("http://moby.to/%s:%s", id, use_full ? "full" : "thumb");
-		return new PreviewMedia(preview, orig);
+		final String preview = String.format("http://moby.to/%s:%s", id, fullImage ? "full" : "thumb");
+		return PreviewMedia.newImage(preview, orig);
 	}
 
-	private static PreviewMedia getPhotozouImage(final String id, final String orig, final boolean use_full) {
+	private static PreviewMedia getPhotozouImage(final HttpClientWrapper client, final String id, final String orig,
+			final boolean fullImage) throws IOException {
 		if (isEmpty(id)) return null;
-		final String preview = String.format("http://photozou.jp/p/%s/%s", use_full ? "img" : "thumb", id);
-		return new PreviewMedia(preview, orig);
+		if (client != null) {
+			try {
+				final HttpParameter[] parameters = { new HttpParameter("photo_id", id) };
+				final HttpResponse resp = client.get(URL_PHOTOZOU_PHOTO_INFO, URL_PHOTOZOU_PHOTO_INFO, parameters);
+				final JSONObject json = resp.asJSONObject().getJSONObject("info").getJSONObject("photo");
+				final String key = fullImage ? "original_image_url" : "image_url";
+				return PreviewMedia.newImage(json.getString(key), orig);
+			} catch (final TwitterException e) {
+				return null;
+			} catch (final JSONException e) {
+				throw new IOException(e);
+			}
+		}
+		final String preview = String.format(Locale.US, "http://photozou.jp/p/img/%s", id);
+		return PreviewMedia.newImage(preview, orig);
 	}
 
-	private static PreviewMedia getSinaWeiboImage(final String url, final boolean use_full) {
+	private static PreviewMedia getSinaWeiboImage(final String url, final boolean fullImage) {
 		if (isEmpty(url)) return null;
 		final String full = url.replaceAll("\\/" + SINA_WEIBO_IMAGES_AVAILABLE_SIZES + "\\/", "/woriginal/");
-		final String preview = use_full ? full : url.replaceAll("\\/" + SINA_WEIBO_IMAGES_AVAILABLE_SIZES + "\\/",
+		final String preview = fullImage ? full : url.replaceAll("\\/" + SINA_WEIBO_IMAGES_AVAILABLE_SIZES + "\\/",
 				"/bmiddle/");
-		return new PreviewMedia(preview, full);
+		return PreviewMedia.newImage(preview, full);
 	}
 
-	private static PreviewMedia getTwitgooImage(final String id, final String orig, final boolean use_full) {
+	private static PreviewMedia getTwitgooImage(final String id, final String orig, final boolean fullImage) {
 		if (isEmpty(id)) return null;
-		final String preview = String.format("http://twitgoo.com/show/%s/%s", use_full ? "img" : "thumb", id);
-		return new PreviewMedia(preview, orig);
+		final String preview = String.format("http://twitgoo.com/show/%s/%s", fullImage ? "img" : "thumb", id);
+		return PreviewMedia.newImage(preview, orig);
 	}
 
-	private static PreviewMedia getTwitpicImage(final String id, final String orig, final boolean use_full) {
+	private static PreviewMedia getTwitpicImage(final String id, final String orig, final boolean fullImage) {
 		if (isEmpty(id)) return null;
-		final String preview = String.format("http://twitpic.com/show/%s/%s", use_full ? "large" : "thumb", id);
-		return new PreviewMedia(preview, orig);
+		final String preview = String.format("http://twitpic.com/show/%s/%s", fullImage ? "large" : "thumb", id);
+		return PreviewMedia.newImage(preview, orig);
 	}
 
-	private static PreviewMedia getTwitterImage(final String url, final boolean use_full) {
+	private static PreviewMedia getTwitterImage(final String url, final boolean fullImage) {
 		if (isEmpty(url)) return null;
 		final String full = (url + ":large").replaceFirst("https?://", "https://");
-		final String preview = use_full ? full : (url + ":small").replaceFirst("https?://", "https://");
-		return new PreviewMedia(preview, full);
+		final String preview = fullImage ? full : (url + ":medium").replaceFirst("https?://", "https://");
+		return PreviewMedia.newImage(preview, full);
 	}
 
-	private static PreviewMedia getYfrogImage(final String id, final String orig, final boolean use_full) {
+	private static PreviewMedia getYfrogImage(final String id, final String orig, final boolean fullImage) {
 		if (isEmpty(id)) return null;
-		final String preview = String.format("http://yfrog.com/%s:%s", id, use_full ? "medium" : "iphone");
-		return new PreviewMedia(preview, orig);
+		final String preview = String.format("http://yfrog.com/%s:%s", id, fullImage ? "medium" : "iphone");
+		return PreviewMedia.newImage(preview, orig);
 
 	}
 }

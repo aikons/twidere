@@ -1,26 +1,26 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.activity;
 
+import static org.mariotaku.twidere.util.ContentValuesCreator.makeFilterdUserContentValues;
 import static org.mariotaku.twidere.util.Utils.getDefaultAccountId;
-import static org.mariotaku.twidere.util.Utils.makeFilterdUserContentValues;
 
 import android.app.ActionBar;
 import android.app.ActionBar.Tab;
@@ -39,7 +39,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.app.NavUtils;
 import android.support.v4.view.ViewPager;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
 import android.support.v4.widget.SimpleCursorAdapter;
@@ -49,7 +48,9 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AutoCompleteTextView;
 
+import org.mariotaku.querybuilder.Where;
 import org.mariotaku.twidere.R;
+import org.mariotaku.twidere.activity.support.UserListSelectorActivity;
 import org.mariotaku.twidere.adapter.SourceAutoCompleteAdapter;
 import org.mariotaku.twidere.adapter.TabsAdapter;
 import org.mariotaku.twidere.adapter.UserHashtagAutoCompleteAdapter;
@@ -62,6 +63,7 @@ import org.mariotaku.twidere.fragment.BaseFiltersFragment.FilteredUsersFragment;
 import org.mariotaku.twidere.model.ParcelableUser;
 import org.mariotaku.twidere.provider.TweetStore.Filters;
 import org.mariotaku.twidere.util.ParseUtils;
+import org.mariotaku.twidere.util.ThemeUtils;
 
 public class FiltersActivity extends BaseActivity implements TabListener, OnPageChangeListener {
 
@@ -83,15 +85,15 @@ public class FiltersActivity extends BaseActivity implements TabListener, OnPage
 	public void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		mPreferences = getSharedPreferences(SHARED_PREFERENCES_NAME, MODE_PRIVATE);
-		setContentView(R.layout.filters);
+		setContentView(R.layout.activity_filters);
 		mActionBar = getActionBar();
 		mAdapter = new TabsAdapter(this, getFragmentManager(), null);
 		mActionBar.setDisplayHomeAsUpEnabled(true);
 		mActionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
-		addTab(FilteredUsersFragment.class, getString(R.string.users), 0);
-		addTab(FilteredKeywordsFragment.class, getString(R.string.keywords), 1);
-		addTab(FilteredSourcesFragment.class, getString(R.string.sources), 2);
-		addTab(FilteredLinksFragment.class, getString(R.string.links), 3);
+		addTab(FilteredUsersFragment.class, R.string.users, 0);
+		addTab(FilteredKeywordsFragment.class, R.string.keywords, 1);
+		addTab(FilteredSourcesFragment.class, R.string.sources, 2);
+		addTab(FilteredLinksFragment.class, R.string.links, 3);
 		mViewPager.setAdapter(mAdapter);
 		mViewPager.setOnPageChangeListener(this);
 	}
@@ -106,7 +108,7 @@ public class FiltersActivity extends BaseActivity implements TabListener, OnPage
 	public boolean onOptionsItemSelected(final MenuItem item) {
 		switch (item.getItemId()) {
 			case MENU_HOME: {
-				NavUtils.navigateUpFromSameTask(this);
+				navigateUpFromSameTask();
 				return true;
 			}
 			case MENU_ADD: {
@@ -131,19 +133,19 @@ public class FiltersActivity extends BaseActivity implements TabListener, OnPage
 			}
 			case R.id.enable_in_home_timeline: {
 				final SharedPreferences.Editor editor = mPreferences.edit();
-				editor.putBoolean(PREFERENCE_KEY_FILTERS_IN_HOME_TIMELINE, !item.isChecked());
+				editor.putBoolean(KEY_FILTERS_IN_HOME_TIMELINE, !item.isChecked());
 				editor.apply();
 				break;
 			}
 			case R.id.enable_in_mentions: {
 				final SharedPreferences.Editor editor = mPreferences.edit();
-				editor.putBoolean(PREFERENCE_KEY_FILTERS_IN_MENTIONS, !item.isChecked());
+				editor.putBoolean(KEY_FILTERS_IN_MENTIONS, !item.isChecked());
 				editor.apply();
 				break;
 			}
 			case R.id.enable_for_rts: {
 				final SharedPreferences.Editor editor = mPreferences.edit();
-				editor.putBoolean(PREFERENCE_KEY_FILTERS_FOR_RTS, !item.isChecked());
+				editor.putBoolean(KEY_FILTERS_FOR_RTS, !item.isChecked());
 				editor.apply();
 				break;
 			}
@@ -168,9 +170,9 @@ public class FiltersActivity extends BaseActivity implements TabListener, OnPage
 
 	@Override
 	public boolean onPrepareOptionsMenu(final Menu menu) {
-		final boolean enable_in_home_timeline = mPreferences.getBoolean(PREFERENCE_KEY_FILTERS_IN_HOME_TIMELINE, true);
-		final boolean enable_in_mentions = mPreferences.getBoolean(PREFERENCE_KEY_FILTERS_IN_MENTIONS, true);
-		final boolean enable_for_rts = mPreferences.getBoolean(PREFERENCE_KEY_FILTERS_FOR_RTS, true);
+		final boolean enable_in_home_timeline = mPreferences.getBoolean(KEY_FILTERS_IN_HOME_TIMELINE, true);
+		final boolean enable_in_mentions = mPreferences.getBoolean(KEY_FILTERS_IN_MENTIONS, true);
+		final boolean enable_for_rts = mPreferences.getBoolean(KEY_FILTERS_FOR_RTS, true);
 		menu.findItem(R.id.enable_in_home_timeline).setChecked(enable_in_home_timeline);
 		menu.findItem(R.id.enable_in_mentions).setChecked(enable_in_mentions);
 		menu.findItem(R.id.enable_for_rts).setChecked(enable_for_rts);
@@ -202,18 +204,17 @@ public class FiltersActivity extends BaseActivity implements TabListener, OnPage
 				final ParcelableUser user = data.getParcelableExtra(EXTRA_USER);
 				final ContentValues values = makeFilterdUserContentValues(user);
 				final ContentResolver resolver = getContentResolver();
-				resolver.delete(Filters.Users.CONTENT_URI, String.format("%s  = %d", Filters.Users.USER_ID, user.id),
-						null);
+				resolver.delete(Filters.Users.CONTENT_URI, Where.equals(Filters.Users.USER_ID, user.id).getSQL(), null);
 				resolver.insert(Filters.Users.CONTENT_URI, values);
 				break;
 			}
 		}
 	}
 
-	private void addTab(final Class<? extends Fragment> cls, final String name, final int position) {
+	private void addTab(final Class<? extends Fragment> cls, final int name, final int position) {
 		if (mActionBar == null || mAdapter == null) return;
 		mActionBar.addTab(mActionBar.newTab().setText(name).setTabListener(this));
-		mAdapter.addTab(cls, null, name, null, position);
+		mAdapter.addTab(cls, null, getString(name), null, position);
 	}
 
 	public static final class AddItemFragment extends BaseDialogFragment implements OnClickListener {
@@ -239,10 +240,10 @@ public class FiltersActivity extends BaseActivity implements TabListener, OnPage
 
 		@Override
 		public Dialog onCreateDialog(final Bundle savedInstanceState) {
-			final Context context = getActivity();
-			final AlertDialog.Builder builder = new AlertDialog.Builder(context);
+			final Context wrapped = ThemeUtils.getDialogThemedContext(getActivity());
+			final AlertDialog.Builder builder = new AlertDialog.Builder(wrapped);
 			buildDialog(builder);
-			final View view = LayoutInflater.from(context).inflate(R.layout.auto_complete_textview, null);
+			final View view = LayoutInflater.from(wrapped).inflate(R.layout.auto_complete_textview, null);
 			builder.setView(view);
 			mEditText = (AutoCompleteTextView) view.findViewById(R.id.edit_text);
 			final Bundle args = getArguments();

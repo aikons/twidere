@@ -1,35 +1,34 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.adapter;
 
+import static org.mariotaku.twidere.util.UserColorNicknameUtils.getUserColor;
+import static org.mariotaku.twidere.util.UserColorNicknameUtils.getUserNickname;
 import static org.mariotaku.twidere.util.Utils.configBaseCardAdapter;
 import static org.mariotaku.twidere.util.Utils.getAccountColor;
 import static org.mariotaku.twidere.util.Utils.getLocalizedNumber;
-import static org.mariotaku.twidere.util.Utils.getUserColor;
-import static org.mariotaku.twidere.util.Utils.getUserNickname;
 import static org.mariotaku.twidere.util.Utils.getUserTypeIconRes;
 
 import android.content.Context;
 import android.text.TextUtils;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 
 import org.mariotaku.twidere.R;
@@ -38,26 +37,32 @@ import org.mariotaku.twidere.app.TwidereApplication;
 import org.mariotaku.twidere.model.ParcelableUser;
 import org.mariotaku.twidere.util.ImageLoaderWrapper;
 import org.mariotaku.twidere.util.MultiSelectManager;
+import org.mariotaku.twidere.util.Utils;
 import org.mariotaku.twidere.view.holder.UserViewHolder;
+import org.mariotaku.twidere.view.iface.ICardItemView.OnOverflowIconClickListener;
 
 import java.util.List;
 import java.util.Locale;
 
-public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> implements IBaseCardAdapter, OnClickListener {
+public class ParcelableUsersAdapter extends BaseArrayAdapter<ParcelableUser> implements IBaseCardAdapter,
+		OnOverflowIconClickListener {
 
 	private final ImageLoaderWrapper mProfileImageLoader;
 	private final MultiSelectManager mMultiSelectManager;
 	private final Context mContext;
 	private final Locale mLocale;
 
-	private boolean mDisplayProfileImage, mShowAccountColor, mNicknameOnly, mAnimationEnabled;
-	private float mTextSize;
+	private boolean mAnimationEnabled;
 	private int mMaxAnimationPosition;
 
 	private MenuButtonClickListener mListener;
 
 	public ParcelableUsersAdapter(final Context context) {
-		super(context, R.layout.user_list_item);
+		this(context, Utils.isCompactCards(context));
+	}
+
+	public ParcelableUsersAdapter(final Context context, final boolean compactCards) {
+		super(context, getItemResource(compactCards));
 		mContext = context;
 		mLocale = context.getResources().getConfiguration().locale;
 		final TwidereApplication app = TwidereApplication.getInstance(context);
@@ -80,24 +85,31 @@ public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> impleme
 			holder = (UserViewHolder) tag;
 		} else {
 			holder = new UserViewHolder(view);
-			holder.item_menu.setOnClickListener(this);
+			holder.content.setOnOverflowIconClickListener(this);
 			view.setTag(holder);
 		}
+
+		// Clear images in prder to prevent images in recycled view shown.
+		holder.profile_image.setImageDrawable(null);
+		holder.position = position;
+
 		final ParcelableUser user = getItem(position);
 
-		holder.setAccountColorEnabled(mShowAccountColor);
+		final boolean showAccountColor = isShowAccountColor();
 
-		if (mShowAccountColor) {
+		holder.setAccountColorEnabled(showAccountColor);
+
+		if (showAccountColor) {
 			holder.setAccountColor(getAccountColor(mContext, user.account_id));
 		}
 
 		holder.setUserColor(getUserColor(mContext, user.id));
 
-		holder.setTextSize(mTextSize);
+		holder.setTextSize(getTextSize());
 		holder.name.setCompoundDrawablesWithIntrinsicBounds(0, 0,
 				getUserTypeIconRes(user.is_verified, user.is_protected), 0);
 		final String nick = getUserNickname(mContext, user.id);
-		holder.name.setText(TextUtils.isEmpty(nick) ? user.name : mNicknameOnly ? nick : mContext.getString(
+		holder.name.setText(TextUtils.isEmpty(nick) ? user.name : isNicknameOnly() ? nick : mContext.getString(
 				R.string.name_with_nickname, user.name, nick));
 		holder.screen_name.setText("@" + user.screen_name);
 		holder.description.setVisibility(TextUtils.isEmpty(user.description_unescaped) ? View.GONE : View.VISIBLE);
@@ -109,11 +121,10 @@ public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> impleme
 		holder.statuses_count.setText(getLocalizedNumber(mLocale, user.statuses_count));
 		holder.followers_count.setText(getLocalizedNumber(mLocale, user.followers_count));
 		holder.friends_count.setText(getLocalizedNumber(mLocale, user.friends_count));
-		holder.profile_image.setVisibility(mDisplayProfileImage ? View.VISIBLE : View.GONE);
-		if (mDisplayProfileImage) {
+		holder.profile_image.setVisibility(isDisplayProfileImage() ? View.VISIBLE : View.GONE);
+		if (isDisplayProfileImage()) {
 			mProfileImageLoader.displayProfileImage(holder.profile_image, user.profile_image_url);
 		}
-		holder.item_menu.setTag(position);
 		if (position > mMaxAnimationPosition) {
 			if (mAnimationEnabled) {
 				view.startAnimation(holder.item_animation);
@@ -124,17 +135,14 @@ public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> impleme
 	}
 
 	@Override
-	public void onClick(final View view) {
+	public void onOverflowIconClick(final View view) {
 		if (mMultiSelectManager.isActive()) return;
 		final Object tag = view.getTag();
-		final int position = tag instanceof Integer ? (Integer) tag : -1;
-		if (position == -1) return;
-		switch (view.getId()) {
-			case R.id.item_menu: {
-				if (position == -1 || mListener == null) return;
-				mListener.onMenuButtonClick(view, position, getItemId(position));
-				break;
-			}
+		if (tag instanceof UserViewHolder) {
+			final UserViewHolder holder = (UserViewHolder) tag;
+			final int position = holder.position;
+			if (position == -1 || mListener == null) return;
+			mListener.onMenuButtonClick(view, position, getItemId(position));
 		}
 	}
 
@@ -161,24 +169,6 @@ public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> impleme
 	}
 
 	@Override
-	public void setDisplayNameFirst(final boolean name_first) {
-
-	}
-
-	@Override
-	public void setDisplayProfileImage(final boolean display) {
-		if (display != mDisplayProfileImage) {
-			mDisplayProfileImage = display;
-			notifyDataSetChanged();
-		}
-	}
-
-	@Override
-	public void setLinkHighlightOption(final String option) {
-
-	}
-
-	@Override
 	public void setMaxAnimationPosition(final int position) {
 		mMaxAnimationPosition = position;
 	}
@@ -188,26 +178,8 @@ public class ParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> impleme
 		mListener = listener;
 	}
 
-	@Override
-	public void setNicknameOnly(final boolean nickname_only) {
-		if (mNicknameOnly == nickname_only) return;
-		mNicknameOnly = nickname_only;
-		notifyDataSetChanged();
-	}
-
-	public void setShowAccountColor(final boolean show) {
-		if (show != mShowAccountColor) {
-			mShowAccountColor = show;
-			notifyDataSetChanged();
-		}
-	}
-
-	@Override
-	public void setTextSize(final float text_size) {
-		if (text_size != mTextSize) {
-			mTextSize = text_size;
-			notifyDataSetChanged();
-		}
+	private static int getItemResource(final boolean compactCards) {
+		return compactCards ? R.layout.card_item_user_compact : R.layout.card_item_user;
 	}
 
 }

@@ -1,27 +1,27 @@
 /*
  * 				Twidere - Twitter client for Android
- *
- *  Copyright (C) 2012-2013 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
+ * 
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
- *
+ * 
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ * 
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.adapter;
 
-import static android.text.format.DateUtils.getRelativeTimeSpanString;
 import static org.mariotaku.twidere.util.Utils.configBaseCardAdapter;
-import static org.mariotaku.twidere.util.Utils.formatSameDayTime;
+import static org.mariotaku.twidere.util.Utils.getDisplayName;
+import static org.mariotaku.twidere.util.Utils.isCompactCards;
 
 import android.content.Context;
 import android.view.View;
@@ -40,29 +40,35 @@ import org.mariotaku.twidere.view.holder.ActivityViewHolder;
 
 import java.util.List;
 
-public abstract class BaseParcelableActivitiesAdapter extends ArrayAdapter<ParcelableActivity> implements
+public abstract class BaseParcelableActivitiesAdapter extends BaseArrayAdapter<ParcelableActivity> implements
 		IBaseCardAdapter {
 
-	private final Context mContext;
 	private final MultiSelectManager mMultiSelectManager;
-	private final ImageLoaderWrapper mProfileImageLoader;
+	private final ImageLoaderWrapper mImageLoader;
 
-	private boolean mDisplayProfileImage, mDisplayNameFirst, mShowAbsoluteTime, mAnimationEnabled;
-	private float mTextSize;
+	private boolean mShowAbsoluteTime, mAnimationEnabled;
 	private int mMaxAnimationPosition;
 
 	private MenuButtonClickListener mListener;
 
 	public BaseParcelableActivitiesAdapter(final Context context) {
-		super(context, R.layout.activity_list_item);
-		mContext = context;
+		this(context, isCompactCards(context));
+	}
+
+	public BaseParcelableActivitiesAdapter(final Context context, final boolean compactCards) {
+		super(context, getItemResource(compactCards));
 		final TwidereApplication app = TwidereApplication.getInstance(context);
 		mMultiSelectManager = app.getMultiSelectManager();
-		mProfileImageLoader = app.getImageLoaderWrapper();
+		mImageLoader = app.getImageLoaderWrapper();
 		configBaseCardAdapter(context, this);
 	}
 
 	public abstract void bindView(final int position, final ActivityViewHolder holder, final ParcelableActivity item);
+
+	@Override
+	public ImageLoaderWrapper getImageLoader() {
+		return mImageLoader;
+	}
 
 	@Override
 	public long getItemId(final int position) {
@@ -79,13 +85,13 @@ public abstract class BaseParcelableActivitiesAdapter extends ArrayAdapter<Parce
 		if (!(tag instanceof ActivityViewHolder)) {
 			view.setTag(holder);
 		}
-		holder.reset();
-		holder.setTextSize(mTextSize);
+		holder.setTextSize(getTextSize());
+		holder.my_profile_image.setVisibility(View.GONE);
 		final ParcelableActivity item = getItem(position);
 		if (mShowAbsoluteTime) {
-			holder.time.setText(formatSameDayTime(mContext, item.activity_timestamp));
+			holder.time.setTime(item.activity_timestamp);
 		} else {
-			holder.time.setText(getRelativeTimeSpanString(item.activity_timestamp));
+			holder.time.setTime(item.activity_timestamp);
 		}
 		bindView(position, holder, item);
 		return view;
@@ -112,26 +118,6 @@ public abstract class BaseParcelableActivitiesAdapter extends ArrayAdapter<Parce
 	}
 
 	@Override
-	public void setDisplayNameFirst(final boolean name_first) {
-		if (mDisplayNameFirst == name_first) return;
-		mDisplayNameFirst = name_first;
-		notifyDataSetChanged();
-	}
-
-	@Override
-	public void setDisplayProfileImage(final boolean display) {
-		if (display != mDisplayProfileImage) {
-			mDisplayProfileImage = display;
-			notifyDataSetChanged();
-		}
-	}
-
-	@Override
-	public void setLinkHighlightOption(final String option) {
-
-	}
-
-	@Override
 	public void setMaxAnimationPosition(final int position) {
 		mMaxAnimationPosition = position;
 	}
@@ -141,11 +127,6 @@ public abstract class BaseParcelableActivitiesAdapter extends ArrayAdapter<Parce
 		mListener = listener;
 	}
 
-	@Override
-	public void setNicknameOnly(final boolean nickname_only) {
-
-	}
-
 	public void setShowAbsoluteTime(final boolean show) {
 		if (show != mShowAbsoluteTime) {
 			mShowAbsoluteTime = show;
@@ -153,62 +134,88 @@ public abstract class BaseParcelableActivitiesAdapter extends ArrayAdapter<Parce
 		}
 	}
 
-	@Override
-	public void setTextSize(final float text_size) {
-		if (text_size != mTextSize) {
-			mTextSize = text_size;
-			notifyDataSetChanged();
+	protected void displayActivityUserProfileImages(final ActivityViewHolder holder, final ParcelableStatus[] statuses) {
+		if (statuses == null) {
+			displayActivityUserProfileImages(holder, new String[0]);
+		} else {
+			final String[] urls = new String[statuses.length];
+			for (int i = 0, j = statuses.length; i < j; i++) {
+				urls[i] = statuses[i].user_profile_image_url;
+			}
+			displayActivityUserProfileImages(holder, urls);
 		}
 	}
 
-	protected Context getContext() {
-		return mContext;
+	protected void displayActivityUserProfileImages(final ActivityViewHolder holder, final ParcelableUser[] users) {
+		if (users == null) {
+			displayActivityUserProfileImages(holder, new String[0]);
+		} else {
+			final String[] urls = new String[users.length];
+			for (int i = 0, j = users.length; i < j; i++) {
+				urls[i] = users[i].profile_image_url;
+			}
+			displayActivityUserProfileImages(holder, urls);
+		}
+	}
+
+	protected void displayProfileImage(final ImageView view, final ParcelableUser user) {
+		if (isDisplayProfileImage()) {
+			mImageLoader.displayProfileImage(view, user.profile_image_url);
+		} else {
+			view.setImageDrawable(null);
+		}
 	}
 
 	protected String getName(final ParcelableStatus status) {
 		if (status == null) return null;
-		return mDisplayNameFirst ? status.user_name : "@" + status.user_screen_name;
+		return getDisplayName(getContext(), status.user_id, status.user_name, status.user_screen_name,
+				isDisplayNameFirst(), isNicknameOnly());
 	}
 
 	protected String getName(final ParcelableUser user) {
 		if (user == null) return null;
-		return mDisplayNameFirst ? user.name : "@" + user.screen_name;
+		return getDisplayName(getContext(), user.id, user.name, user.screen_name, isDisplayNameFirst(),
+				isNicknameOnly());
 	}
 
-	protected void setProfileImage(final ActivityViewHolder holder, final ParcelableUser user) {
-		if (mDisplayProfileImage) {
-			mProfileImageLoader.displayProfileImage(holder.profile_image, user.profile_image_url);
+	protected void setProfileImage(final ImageView view, final ParcelableStatus status) {
+		if (isDisplayProfileImage()) {
+			mImageLoader.displayProfileImage(view, status.user_profile_image_url);
 		} else {
-			holder.profile_image.setImageDrawable(null);
-		}
-	}
-
-	protected void setUserProfileImages(final ActivityViewHolder holder, final ParcelableStatus[] statuses) {
-		final int length = statuses != null ? Math.min(holder.activity_profile_images.length, statuses.length) : 0;
-		final boolean should_display_images = mDisplayProfileImage && length > 0;
-		holder.activity_profile_image_container.setVisibility(should_display_images ? View.VISIBLE : View.GONE);
-		if (!should_display_images) return;
-		for (int i = 0; i < length; i++) {
-			final ImageView activity_profile_image = holder.activity_profile_images[i];
-			final String profile_image_url = statuses[i].user_profile_image_url;
-			mProfileImageLoader.displayProfileImage(activity_profile_image, profile_image_url);
-		}
-	}
-
-	protected void setUserProfileImages(final ActivityViewHolder holder, final ParcelableUser[] users) {
-		final int length = users != null ? Math.min(holder.activity_profile_images.length, users.length) : 0;
-		final boolean should_display_images = mDisplayProfileImage && length > 0;
-		holder.activity_profile_image_container.setVisibility(should_display_images ? View.VISIBLE : View.GONE);
-		if (!should_display_images) return;
-		for (int i = 0; i < length; i++) {
-			final ImageView activity_profile_image = holder.activity_profile_images[i];
-			final String profile_image_url = users[i].profile_image_url;
-			mProfileImageLoader.displayProfileImage(activity_profile_image, profile_image_url);
+			view.setImageDrawable(null);
 		}
 	}
 
 	protected boolean shouldDisplayProfileImage() {
-		return mDisplayProfileImage;
+		return isDisplayProfileImage();
+	}
+
+	private void displayActivityUserProfileImages(final ActivityViewHolder holder, final String[] urls) {
+		final int length = urls != null ? Math.min(holder.activity_profile_images.length, urls.length) : 0;
+		final boolean shouldDisplayImages = isDisplayProfileImage() && length > 0;
+		holder.activity_profile_images_container.setVisibility(shouldDisplayImages ? View.VISIBLE : View.GONE);
+		if (!shouldDisplayImages) return;
+		for (int i = 0, j = holder.activity_profile_images.length; i < j; i++) {
+			final ImageView view = holder.activity_profile_images[i];
+			view.setImageDrawable(null);
+			if (i < length) {
+				view.setVisibility(View.VISIBLE);
+				mImageLoader.displayProfileImage(view, urls[i]);
+			} else {
+				view.setVisibility(View.GONE);
+			}
+		}
+		if (urls.length > holder.activity_profile_images.length) {
+			final int moreNumber = urls.length - holder.activity_profile_images.length;
+			holder.activity_profile_image_more_number.setVisibility(View.VISIBLE);
+			holder.activity_profile_image_more_number.setText(getContext().getString(R.string.and_more, moreNumber));
+		} else {
+			holder.activity_profile_image_more_number.setVisibility(View.GONE);
+		}
+	}
+
+	private static int getItemResource(final boolean compactCards) {
+		return compactCards ? R.layout.card_item_activity_compact : R.layout.card_item_activity;
 	}
 
 }

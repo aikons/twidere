@@ -27,13 +27,12 @@ import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.ViewConfigurationCompat;
 import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
-import android.util.FloatMath;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 
 import org.mariotaku.twidere.R;
-import org.mariotaku.twidere.util.ViewAccessor;
+import org.mariotaku.twidere.util.accessor.ViewAccessor;
 import org.mariotaku.twidere.view.iface.PagerIndicator;
 
 /**
@@ -373,7 +372,7 @@ public class LinePageIndicator extends View implements PagerIndicator {
 				result = Math.min(result, specSize);
 			}
 		}
-		return (int) FloatMath.ceil(result);
+		return (int) Math.ceil(result);
 	}
 
 	/**
@@ -400,7 +399,7 @@ public class LinePageIndicator extends View implements PagerIndicator {
 				result = Math.min(result, specSize);
 			}
 		}
-		return (int) FloatMath.ceil(result);
+		return (int) Math.ceil(result);
 	}
 
 	static class SavedState extends BaseSavedState {

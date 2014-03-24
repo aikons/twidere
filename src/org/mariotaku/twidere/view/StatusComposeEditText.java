@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.view;
@@ -26,11 +26,11 @@ import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.method.ArrowKeyMovementMethod;
 import android.util.AttributeSet;
-import android.widget.MultiAutoCompleteTextView;
 
 import org.mariotaku.twidere.adapter.UserHashtagAutoCompleteAdapter;
+import org.mariotaku.twidere.view.themed.ThemedMultiAutoCompleteTextView;
 
-public class StatusComposeEditText extends MultiAutoCompleteTextView implements InputType {
+public class StatusComposeEditText extends ThemedMultiAutoCompleteTextView implements InputType {
 
 	private UserHashtagAutoCompleteAdapter mAdapter;
 
@@ -69,7 +69,13 @@ public class StatusComposeEditText extends MultiAutoCompleteTextView implements 
 		setAdapter(mAdapter);
 	}
 
-	static class ScreenNameTokenizer implements Tokenizer {
+	@Override
+	protected void replaceText(final CharSequence text) {
+		super.replaceText(text);
+		append(" ");
+	}
+
+	private static class ScreenNameTokenizer implements Tokenizer {
 
 		@Override
 		public int findTokenEnd(final CharSequence text, final int cursor) {
@@ -116,16 +122,10 @@ public class StatusComposeEditText extends MultiAutoCompleteTextView implements 
 				i--;
 			}
 
-			if (i > 0 && text.charAt(i - 1) == ' ')
-				return text + " ";
-			else {
-				if (text instanceof Spanned) {
-					final SpannableString sp = new SpannableString(text + " ");
-					TextUtils.copySpansFrom((Spanned) text, 0, text.length(), Object.class, sp, 0);
-					return sp;
-				} else
-					return text + " ";
-			}
+			if (i > 0 && text.charAt(i - 1) == ' ' || !(text instanceof Spanned)) return text;
+			final SpannableString sp = new SpannableString(text);
+			TextUtils.copySpansFrom((Spanned) text, 0, text.length(), Object.class, sp, 0);
+			return sp;
 		}
 
 		private static boolean isToken(final char character) {

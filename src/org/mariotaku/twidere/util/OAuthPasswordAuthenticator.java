@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.util;
@@ -34,51 +34,51 @@ import twitter4j.TwitterException;
 import twitter4j.auth.AccessToken;
 import twitter4j.auth.RequestToken;
 import twitter4j.conf.Configuration;
-import twitter4j.http.HttpClient;
-import twitter4j.http.HttpClientFactory;
+import twitter4j.http.HttpClientWrapper;
 import twitter4j.http.HttpParameter;
-import twitter4j.http.HttpRequest;
-import twitter4j.http.RequestMethod;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.util.HashMap;
 
 public class OAuthPasswordAuthenticator implements Constants {
 
 	private final Twitter twitter;
-	private final HttpClient client;
+	private final HttpClientWrapper client;
+
+	private static final String REFRESH_URL_PREFIX = "url=";
 
 	public OAuthPasswordAuthenticator(final Twitter twitter) {
 		final Configuration conf = twitter.getConfiguration();
 		this.twitter = twitter;
-		client = HttpClientFactory.getInstance(conf);
+		client = new HttpClientWrapper(conf);
 	}
 
-	public synchronized AccessToken getOAuthAccessToken(final String username, final String password)
-			throws AuthenticationException {
-		final RequestToken request_token;
+	public AccessToken getOAuthAccessToken(final String username, final String password) throws AuthenticationException {
+		if (twitter == null) return null;
+		final RequestToken requestToken;
 		try {
-			request_token = twitter.getOAuthRequestToken(OAUTH_CALLBACK_OOB);
+			requestToken = twitter.getOAuthRequestToken(OAUTH_CALLBACK_OOB);
 		} catch (final TwitterException e) {
 			if (e.isCausedByNetworkIssue()) throw new AuthenticationException(e);
 			throw new AuthenticityTokenException();
 		}
 		try {
-			final String oauth_token = request_token.getToken();
-			final String authenticity_token = readAuthenticityTokenFromHtml(getHTTPContent(
-					request_token.getAuthorizationURL(), false, null));
-			if (authenticity_token == null) throw new AuthenticityTokenException();
+			final String oauthToken = requestToken.getToken();
+			final String authorizationUrl = requestToken.getAuthorizationURL().toString();
+			final String authenticityToken = readAuthenticityTokenFromHtml(client.get(authorizationUrl,
+					authorizationUrl, null, null).asReader());
+			if (authenticityToken == null) throw new AuthenticityTokenException();
 			final Configuration conf = twitter.getConfiguration();
 			final HttpParameter[] params = new HttpParameter[4];
-			params[0] = new HttpParameter("authenticity_token", authenticity_token);
-			params[1] = new HttpParameter("oauth_token", oauth_token);
+			params[0] = new HttpParameter("authenticity_token", authenticityToken);
+			params[1] = new HttpParameter("oauth_token", oauthToken);
 			params[2] = new HttpParameter("session[username_or_email]", username);
 			params[3] = new HttpParameter("session[password]", password);
-			final String oauth_pin = readOAuthPINFromHtml(getHTTPContent(conf.getOAuthAuthorizationURL().toString(),
-					true, params));
-			if (isEmpty(oauth_pin)) throw new WrongUserPassException();
-			return twitter.getOAuthAccessToken(request_token, oauth_pin);
+			final String oAuthAuthorizationUrl = conf.getOAuthAuthorizationURL().toString();
+			final String oauthPin = readOAuthPINFromHtml(client.post(oAuthAuthorizationUrl, oAuthAuthorizationUrl,
+					params).asReader());
+			if (isEmpty(oauthPin)) throw new WrongUserPassException();
+			return twitter.getOAuthAccessToken(requestToken, oauthPin);
 		} catch (final IOException e) {
 			throw new AuthenticationException(e);
 		} catch (final TwitterException e) {
@@ -88,15 +88,6 @@ public class OAuthPasswordAuthenticator implements Constants {
 		} catch (final XmlPullParserException e) {
 			throw new AuthenticationException(e);
 		}
-	}
-
-	private Reader getHTTPContent(final String url_string, final boolean post, final HttpParameter[] params)
-			throws TwitterException {
-		final RequestMethod method = post ? RequestMethod.POST : RequestMethod.GET;
-		final HashMap<String, String> headers = new HashMap<String, String>();
-		// headers.put("User-Agent", user_agent);
-		final HttpRequest request = new HttpRequest(method, url_string, url_string, params, null, headers);
-		return client.request(request).asReader();
 	}
 
 	public static String readAuthenticityTokenFromHtml(final Reader in) throws IOException, XmlPullParserException {
@@ -110,6 +101,29 @@ public class OAuthPasswordAuthenticator implements Constants {
 				case XmlPullParser.START_TAG: {
 					if ("input".equals(tag) && "authenticity_token".equals(parser.getAttributeValue(null, "name")))
 						return parser.getAttributeValue(null, "value");
+				}
+			}
+		}
+		return null;
+	}
+
+	public static String readCallbackUrlFromHtml(final Reader in) throws IOException, XmlPullParserException {
+		final XmlPullParserFactory f = XmlPullParserFactory.newInstance();
+		final XmlPullParser parser = f.newPullParser();
+		parser.setFeature(Xml.FEATURE_RELAXED, true);
+		parser.setInput(in);
+		while (parser.next() != XmlPullParser.END_DOCUMENT) {
+			final String tag = parser.getName();
+			switch (parser.getEventType()) {
+				case XmlPullParser.START_TAG: {
+					if ("meta".equals(tag) && "refresh".equals(parser.getAttributeValue(null, "http-equiv"))) {
+						final String content = parser.getAttributeValue(null, "content");
+						int idx;
+						if (!TextUtils.isEmpty(content) && (idx = content.indexOf(REFRESH_URL_PREFIX)) != -1) {
+							final String url = content.substring(idx + REFRESH_URL_PREFIX.length());
+							if (!TextUtils.isEmpty(url)) return url;
+						}
+					}
 				}
 			}
 		}

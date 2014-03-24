@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2008 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * 				Twidere - Twitter client for Android
+ * 
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.preference;
@@ -23,17 +26,15 @@ import android.content.DialogInterface.OnClickListener;
 import android.database.Cursor;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
-import android.preference.ListPreference;
+import android.net.Uri;
 import android.util.AttributeSet;
 
+import org.mariotaku.twidere.R;
 import org.mariotaku.twidere.util.ArrayUtils;
 
-import java.util.ArrayList;
-import java.util.List;
+public class RingtonePreference extends AutoInvalidateListPreference {
 
-public class RingtonePreference extends ListPreference {
-
-	private List<Ringtone> mRingtones;
+	private Ringtone[] mRingtones;
 	private String[] mEntries, mValues;
 
 	private int mSelectedItem;
@@ -47,7 +48,7 @@ public class RingtonePreference extends ListPreference {
 	}
 
 	public Ringtone getSelectedRingtone() {
-		return mRingtones.get(mSelectedItem);
+		return mRingtones[mSelectedItem];
 	}
 
 	public void setSelectedItem(final int selected) {
@@ -90,14 +91,19 @@ public class RingtonePreference extends ListPreference {
 		final Cursor cur = manager.getCursor();
 		cur.moveToFirst();
 		final int count = cur.getCount();
-		mRingtones = new ArrayList<Ringtone>(count);
-		mEntries = new String[count];
-		mValues = new String[count];
+		mRingtones = new Ringtone[count + 1];
+		mEntries = new String[count + 1];
+		mValues = new String[count + 1];
+		final Uri default_uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+		final Ringtone default_ringtone = RingtoneManager.getRingtone(context, default_uri);
+		mRingtones[0] = default_ringtone;
+		mEntries[0] = context.getString(R.string.default_ringtone);
+		mValues[0] = default_uri.toString();
 		for (int i = 0; i < count; i++) {
 			final Ringtone ringtone = manager.getRingtone(i);
-			mRingtones.add(ringtone);
-			mEntries[i] = ringtone.getTitle(context);
-			mValues[i] = manager.getRingtoneUri(i).toString();
+			mRingtones[i + 1] = ringtone;
+			mEntries[i + 1] = ringtone.getTitle(context);
+			mValues[i + 1] = manager.getRingtoneUri(i).toString();
 		}
 		setEntries(mEntries);
 		setEntryValues(mValues);

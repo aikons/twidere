@@ -1,18 +1,18 @@
 /*
  * 				Twidere - Twitter client for Android
- *
- *  Copyright (C) 2012-2013 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
+ * 
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
- *
+ * 
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ * 
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -37,12 +37,14 @@ public class ArrayAdapter<T> extends BaseAdapter {
 	private int mDropDownLayoutRes;
 
 	private final ArrayList<T> mData = new ArrayList<T>();
+	private final Context mContext;
 
 	public ArrayAdapter(final Context context, final int layoutRes) {
 		this(context, layoutRes, null);
 	}
 
 	public ArrayAdapter(final Context context, final int layoutRes, final Collection<? extends T> collection) {
+		mContext = context;
 		mInflater = LayoutInflater.from(context);
 		mLayoutRes = layoutRes;
 		if (collection != null) {
@@ -50,34 +52,38 @@ public class ArrayAdapter<T> extends BaseAdapter {
 		}
 	}
 
-	public final void add(final T item) {
+	public void add(final T item) {
 		if (item == null) return;
 		mData.add(item);
 		notifyDataSetChanged();
 	}
 
-	public final void addAll(final Collection<? extends T> collection) {
+	public void addAll(final Collection<? extends T> collection) {
 		mData.addAll(collection);
 		notifyDataSetChanged();
 	}
 
-	public final void clear() {
+	public void clear() {
 		mData.clear();
 		notifyDataSetChanged();
 	}
 
-	public final T findItem(final long id) {
+	public T findItem(final long id) {
 		for (int i = 0, count = getCount(); i < count; i++) {
 			if (getItemId(i) == id) return getItem(i);
 		}
 		return null;
 	}
 
-	public final int findItemPosition(final long id) {
+	public int findItemPosition(final long id) {
 		for (int i = 0, count = getCount(); i < count; i++) {
 			if (getItemId(i) == id) return i;
 		}
 		return -1;
+	}
+
+	public Context getContext() {
+		return mContext;
 	}
 
 	@Override
@@ -92,7 +98,7 @@ public class ArrayAdapter<T> extends BaseAdapter {
 	}
 
 	@Override
-	public final T getItem(final int position) {
+	public T getItem(final int position) {
 		return mData.get(position);
 	}
 
@@ -103,10 +109,10 @@ public class ArrayAdapter<T> extends BaseAdapter {
 
 	@Override
 	public View getView(final int position, final View convertView, final ViewGroup parent) {
-		return convertView != null ? convertView : mInflater.inflate(mLayoutRes, null);
+		return convertView != null ? convertView : mInflater.inflate(mLayoutRes, parent, false);
 	}
 
-	public final boolean remove(final int position) {
+	public boolean remove(final int position) {
 		final boolean ret = mData.remove(position) != null;
 		notifyDataSetChanged();
 		return ret;
@@ -116,7 +122,7 @@ public class ArrayAdapter<T> extends BaseAdapter {
 		mDropDownLayoutRes = layoutRes;
 	}
 
-	public final void sort(final Comparator<? super T> comparator) {
+	public void sort(final Comparator<? super T> comparator) {
 		Collections.sort(mData, comparator);
 		notifyDataSetChanged();
 	}

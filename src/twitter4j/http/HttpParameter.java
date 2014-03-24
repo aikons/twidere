@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * A data class representing HTTP Post parameter
@@ -117,7 +118,7 @@ public final class HttpParameter implements Comparable<HttpParameter> {
 			// no extension
 			contentType = OCTET;
 		} else {
-			extensions = extensions.substring(extensions.lastIndexOf(".") + 1).toLowerCase();
+			extensions = extensions.substring(extensions.lastIndexOf(".") + 1).toLowerCase(Locale.US);
 			if (extensions.length() == 3) {
 				if ("gif".equals(extensions)) {
 					contentType = GIF;
@@ -212,6 +213,7 @@ public final class HttpParameter implements Comparable<HttpParameter> {
 		try {
 			encoded = URLEncoder.encode(value, "UTF-8");
 		} catch (final UnsupportedEncodingException ignore) {
+			return null;
 		}
 		final StringBuffer buf = new StringBuffer(encoded.length());
 		char focus;

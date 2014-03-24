@@ -3,9 +3,11 @@
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content">
 
-	<FrameLayout
-		android:layout_width="match_parent"
+	<org.mariotaku.twidere.view.ExtendedRelativeLayout
+		android:id="@+id/theme_preview_content"
+		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
+		android:layout_gravity="center_horizontal"
 		android:layout_marginBottom="4dp"
 		android:layout_marginLeft="8dp"
 		android:layout_marginRight="8dp"
@@ -13,6 +15,6 @@
 		android:background="?cardItemBackground">
 
 		<include layout="@layout/theme_preview_content"/>
-	</FrameLayout>
+	</org.mariotaku.twidere.view.ExtendedRelativeLayout>
 
 </FrameLayout>

@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.util;
@@ -28,6 +28,14 @@ public final class ArrayUtils {
 		throw new AssertionError("You are trying to create an instance for this utility class!");
 	}
 
+	public static boolean contains(final int[] array, final int value) {
+		if (array == null) return false;
+		for (final int item : array) {
+			if (item == value) return true;
+		}
+		return false;
+	}
+
 	public static boolean contains(final long[] array, final long value) {
 		if (array == null) return false;
 		for (final long item : array) {
@@ -36,7 +44,12 @@ public final class ArrayUtils {
 		return false;
 	}
 
-	public static boolean contains(final Object[] array, final Object... values) {
+	public static boolean contains(final Object[] array, final Object value) {
+		if (array == null || value == null) return false;
+		return contains(array, new Object[] { value });
+	}
+
+	public static boolean contains(final Object[] array, final Object[] values) {
 		if (array == null || values == null) return false;
 		for (final Object item : array) {
 			for (final Object value : values) {

@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.util;
@@ -29,6 +29,7 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Locale;
 
 public class HtmlBuilder {
 
@@ -58,14 +59,14 @@ public class HtmlBuilder {
 	public boolean addLink(final String link, final String display, final int start, final int end,
 			final boolean display_is_html) {
 		if (start < 0 || end < 0 || start > end || end > string_length) {
-			final String message = String.format("text:%s, length:%d, start:%d, end:%d", orig, string_length, start,
-					end);
+			final String message = String.format(Locale.US, "text:%s, length:%d, start:%d, end:%d", orig,
+					string_length, start, end);
 			if (throw_exceptions) throw new StringIndexOutOfBoundsException(message);
 			Log.e(LOGTAG, message);
 			return false;
 		}
 		if (hasLink(start, end)) {
-			final String message = String.format(
+			final String message = String.format(Locale.US,
 					"link already added in this range! text:%s, link:%s, display:%s, start:%d, end:%d", orig, link,
 					display, start, end);
 			if (throw_exceptions) throw new IllegalArgumentException(message);

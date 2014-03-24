@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.util;
@@ -39,27 +39,28 @@ public class ImageLoaderWrapper implements Constants {
 
 	public ImageLoaderWrapper(final ImageLoader loader) {
 		mImageLoader = loader;
-		final DisplayImageOptions.Builder profile_opts_builder = new DisplayImageOptions.Builder();
-		profile_opts_builder.cacheInMemory(true);
-		profile_opts_builder.cacheOnDisc(true);
-		profile_opts_builder.showStubImage(R.drawable.ic_profile_image_default);
-		profile_opts_builder.bitmapConfig(Bitmap.Config.ARGB_8888);
-		profile_opts_builder.resetViewBeforeLoading(true);
-		final DisplayImageOptions.Builder image_opts_builder = new DisplayImageOptions.Builder();
-		image_opts_builder.cacheInMemory(true);
-		image_opts_builder.cacheOnDisc(true);
-		image_opts_builder.bitmapConfig(Bitmap.Config.RGB_565);
-		image_opts_builder.resetViewBeforeLoading(true);
-		final DisplayImageOptions.Builder banner_opts_builder = new DisplayImageOptions.Builder();
-		banner_opts_builder.cacheInMemory(true);
-		banner_opts_builder.cacheOnDisc(true);
-		banner_opts_builder.bitmapConfig(Bitmap.Config.RGB_565);
-		banner_opts_builder.resetViewBeforeLoading(true);
-		banner_opts_builder.showStubImage(android.R.color.transparent);
+		final DisplayImageOptions.Builder profileOptsNuilder = new DisplayImageOptions.Builder();
+		profileOptsNuilder.cacheInMemory(true);
+		profileOptsNuilder.cacheOnDisc(true);
+		profileOptsNuilder.showImageForEmptyUri(R.drawable.ic_profile_image_default);
+		profileOptsNuilder.showImageOnFail(R.drawable.ic_profile_image_default);
+		profileOptsNuilder.showImageOnLoading(R.drawable.ic_profile_image_default);
+		profileOptsNuilder.bitmapConfig(Bitmap.Config.ARGB_8888);
+		profileOptsNuilder.resetViewBeforeLoading(true);
+		final DisplayImageOptions.Builder imageOptsBuilder = new DisplayImageOptions.Builder();
+		imageOptsBuilder.cacheInMemory(true);
+		imageOptsBuilder.cacheOnDisc(true);
+		imageOptsBuilder.bitmapConfig(Bitmap.Config.RGB_565);
+		imageOptsBuilder.resetViewBeforeLoading(true);
+		final DisplayImageOptions.Builder bannerOptsBuilder = new DisplayImageOptions.Builder();
+		bannerOptsBuilder.cacheInMemory(true);
+		bannerOptsBuilder.cacheOnDisc(true);
+		bannerOptsBuilder.bitmapConfig(Bitmap.Config.RGB_565);
+		bannerOptsBuilder.resetViewBeforeLoading(true);
 
-		mProfileImageDisplayOptions = profile_opts_builder.build();
-		mImageDisplayOptions = image_opts_builder.build();
-		mBannerDisplayOptions = banner_opts_builder.build();
+		mProfileImageDisplayOptions = profileOptsNuilder.build();
+		mImageDisplayOptions = imageOptsBuilder.build();
+		mBannerDisplayOptions = bannerOptsBuilder.build();
 	}
 
 	public void clearFileCache() {
@@ -74,8 +75,8 @@ public class ImageLoaderWrapper implements Constants {
 		mImageLoader.displayImage(url, view, mImageDisplayOptions);
 	}
 
-	public void displayPreviewImage(final ImageView view, final String url, final ImageLoadingListener listener) {
-		mImageLoader.displayImage(url, view, mImageDisplayOptions, listener);
+	public void displayPreviewImage(final ImageView view, final String url, final ImageLoadingHandler loadingHandler) {
+		mImageLoader.displayImage(url, view, mImageDisplayOptions, loadingHandler, loadingHandler);
 	}
 
 	public void displayProfileBanner(final ImageView view, final String base_url, final int width) {
@@ -88,4 +89,7 @@ public class ImageLoaderWrapper implements Constants {
 		mImageLoader.displayImage(url, view, mProfileImageDisplayOptions);
 	}
 
+	public void loadProfileImage(final String url, final ImageLoadingListener listener) {
+		mImageLoader.loadImage(url, mProfileImageDisplayOptions, listener);
+	}
 }

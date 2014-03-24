@@ -1,26 +1,26 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.adapter;
 
+import static org.mariotaku.twidere.util.UserColorNicknameUtils.getUserNickname;
 import static org.mariotaku.twidere.util.Utils.configBaseAdapter;
-import static org.mariotaku.twidere.util.Utils.getUserNickname;
 import static org.mariotaku.twidere.util.Utils.getUserTypeIconRes;
 
 import android.content.Context;
@@ -37,15 +37,13 @@ import org.mariotaku.twidere.view.holder.TwoLineWithIconViewHolder;
 
 import java.util.List;
 
-public class SimpleParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> implements IBaseAdapter {
+public class SimpleParcelableUsersAdapter extends BaseArrayAdapter<ParcelableUser> implements IBaseAdapter {
 
 	private final ImageLoaderWrapper mProfileImageLoader;
 	private final Context mContext;
 
-	private boolean mDisplayProfileImage, mNicknameOnly;
-
 	public SimpleParcelableUsersAdapter(final Context context) {
-		super(context, R.layout.two_line_list_item);
+		super(context, R.layout.list_item_two_line);
 		mContext = context;
 		final TwidereApplication app = TwidereApplication.getInstance(context);
 		mProfileImageLoader = app.getImageLoaderWrapper();
@@ -68,16 +66,20 @@ public class SimpleParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> i
 			holder = new TwoLineWithIconViewHolder(view);
 			view.setTag(holder);
 		}
+
+		// Clear images in prder to prevent images in recycled view shown.
+		holder.icon.setImageDrawable(null);
+
 		final ParcelableUser user = getItem(position);
 
 		holder.text1.setCompoundDrawablesWithIntrinsicBounds(0, 0,
 				getUserTypeIconRes(user.is_verified, user.is_protected), 0);
 		final String nick = getUserNickname(mContext, user.id);
-		holder.text1.setText(TextUtils.isEmpty(nick) ? user.name : mNicknameOnly ? nick : mContext.getString(
+		holder.text1.setText(TextUtils.isEmpty(nick) ? user.name : isNicknameOnly() ? nick : mContext.getString(
 				R.string.name_with_nickname, user.name, nick));
 		holder.text2.setText("@" + user.screen_name);
-		holder.icon.setVisibility(mDisplayProfileImage ? View.VISIBLE : View.GONE);
-		if (mDisplayProfileImage) {
+		holder.icon.setVisibility(isDisplayProfileImage() ? View.VISIBLE : View.GONE);
+		if (isDisplayProfileImage()) {
 			mProfileImageLoader.displayProfileImage(holder.icon, user.profile_image_url);
 		}
 		return view;
@@ -97,35 +99,6 @@ public class SimpleParcelableUsersAdapter extends ArrayAdapter<ParcelableUser> i
 				add(user);
 			}
 		}
-	}
-
-	@Override
-	public void setDisplayNameFirst(final boolean name_first) {
-
-	}
-
-	@Override
-	public void setDisplayProfileImage(final boolean display) {
-		if (display != mDisplayProfileImage) {
-			mDisplayProfileImage = display;
-			notifyDataSetChanged();
-		}
-	}
-
-	@Override
-	public void setLinkHighlightOption(final String option) {
-
-	}
-
-	@Override
-	public void setNicknameOnly(final boolean nickname_only) {
-		if (mNicknameOnly == nickname_only) return;
-		mNicknameOnly = nickname_only;
-		notifyDataSetChanged();
-	}
-
-	@Override
-	public void setTextSize(final float text_size) {
 	}
 
 }

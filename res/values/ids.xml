@@ -47,13 +47,13 @@
 	<item name="up" type="id"/>
 	<item name="down" type="id"/>
 	<item name="multi_select" type="id"/>
-	<item name="clear_color" type="id"/>
 	<item name="copy" type="id"/>
 	<item name="right_pane" type="id"/>
 	<item name="right_pane_container" type="id"/>
 	<item name="toggle_sensitive" type="id"/>
 	<item name="revoke" type="id"/>
 	<item name="add_to_list" type="id"/>
+	<item name="delete_from_list" type="id"/>
 	<item name="statuses" type="id"/>
 	<item name="favorites" type="id"/>
 	<item name="lists" type="id"/>
@@ -66,5 +66,13 @@
 	<item name="add_to_filter" type="id"/>
 	<item name="follow" type="id"/>
 	<item name="unfollow" type="id"/>
+	<item name="back" type="id"/>
+	<item name="translate" type="id"/>
+	<item name="accept" type="id"/>
+	<item name="deny" type="id"/>
+	<item name="import_settings" type="id"/>
+	<item name="export_settings" type="id"/>
+	<item name="progress" type="id"/>
+	<item name="open_with_account" type="id"/>
 
 </resources>

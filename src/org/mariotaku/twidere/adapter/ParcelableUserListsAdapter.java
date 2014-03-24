@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.adapter;
@@ -37,27 +37,32 @@ import org.mariotaku.twidere.app.TwidereApplication;
 import org.mariotaku.twidere.model.ParcelableUserList;
 import org.mariotaku.twidere.util.ImageLoaderWrapper;
 import org.mariotaku.twidere.util.MultiSelectManager;
+import org.mariotaku.twidere.util.Utils;
 import org.mariotaku.twidere.view.holder.UserListViewHolder;
+import org.mariotaku.twidere.view.iface.ICardItemView.OnOverflowIconClickListener;
 
 import java.util.List;
 import java.util.Locale;
 
-public class ParcelableUserListsAdapter extends ArrayAdapter<ParcelableUserList> implements IBaseCardAdapter,
-		OnClickListener {
+public class ParcelableUserListsAdapter extends BaseArrayAdapter<ParcelableUserList> implements IBaseCardAdapter,
+		OnClickListener, OnOverflowIconClickListener {
 
 	private final Context mContext;
 	private final ImageLoaderWrapper mProfileImageLoader;
 	private final MultiSelectManager mMultiSelectManager;
 	private final Locale mLocale;
 
-	private boolean mDisplayProfileImage, mDisplayNameFirst, mNicknameOnly, mAnimationEnabled;
-	private float mTextSize;
+	private boolean mAnimationEnabled;
 	private int mMaxAnimationPosition;
 
 	private MenuButtonClickListener mListener;
 
 	public ParcelableUserListsAdapter(final Context context) {
-		super(context, R.layout.user_list_list_item);
+		this(context, Utils.isCompactCards(context));
+	}
+
+	public ParcelableUserListsAdapter(final Context context, final boolean compactCards) {
+		super(context, getItemResource(compactCards));
 		mContext = context;
 		mLocale = context.getResources().getConfiguration().locale;
 		final TwidereApplication app = TwidereApplication.getInstance(context);
@@ -85,25 +90,29 @@ public class ParcelableUserListsAdapter extends ArrayAdapter<ParcelableUserList>
 		} else {
 			holder = new UserListViewHolder(view);
 			holder.profile_image.setOnClickListener(this);
-			holder.item_menu.setOnClickListener(this);
+			holder.content.setOnOverflowIconClickListener(this);
 			view.setTag(holder);
 		}
+
+		holder.position = position;
+		// Clear images in prder to prevent images in recycled view shown.
+		holder.profile_image.setImageDrawable(null);
+
 		final ParcelableUserList user_list = getItem(position);
 		final String display_name = getDisplayName(mContext, user_list.user_id, user_list.user_name,
-				user_list.user_screen_name, mDisplayNameFirst, mNicknameOnly, false);
-		holder.setTextSize(mTextSize);
+				user_list.user_screen_name, isDisplayNameFirst(), isNicknameOnly(), false);
+		holder.setTextSize(getTextSize());
 		holder.name.setText(user_list.name);
 		holder.created_by.setText(mContext.getString(R.string.created_by, display_name));
 		holder.description.setVisibility(TextUtils.isEmpty(user_list.description) ? View.GONE : View.VISIBLE);
 		holder.description.setText(user_list.description);
 		holder.members_count.setText(getLocalizedNumber(mLocale, user_list.members_count));
 		holder.subscribers_count.setText(getLocalizedNumber(mLocale, user_list.subscribers_count));
-		holder.profile_image.setVisibility(mDisplayProfileImage ? View.VISIBLE : View.GONE);
-		if (mDisplayProfileImage) {
+		holder.profile_image.setVisibility(isDisplayProfileImage() ? View.VISIBLE : View.GONE);
+		if (isDisplayProfileImage()) {
 			mProfileImageLoader.displayProfileImage(holder.profile_image, user_list.user_profile_image_url);
 		}
 		holder.profile_image.setTag(position);
-		holder.item_menu.setTag(position);
 		if (position > mMaxAnimationPosition) {
 			if (mAnimationEnabled) {
 				view.startAnimation(holder.item_animation);
@@ -127,11 +136,18 @@ public class ParcelableUserListsAdapter extends ArrayAdapter<ParcelableUserList>
 				}
 				break;
 			}
-			case R.id.item_menu: {
-				if (position == -1 || mListener == null) return;
-				mListener.onMenuButtonClick(view, position, getItemId(position));
-				break;
-			}
+		}
+	}
+
+	@Override
+	public void onOverflowIconClick(final View view) {
+		if (mMultiSelectManager.isActive()) return;
+		final Object tag = view.getTag();
+		if (tag instanceof UserListViewHolder) {
+			final UserListViewHolder holder = (UserListViewHolder) tag;
+			final int position = holder.position;
+			if (position == -1 || mListener == null) return;
+			mListener.onMenuButtonClick(view, position, getItemId(position));
 		}
 	}
 
@@ -154,26 +170,6 @@ public class ParcelableUserListsAdapter extends ArrayAdapter<ParcelableUserList>
 	}
 
 	@Override
-	public void setDisplayNameFirst(final boolean name_first) {
-		if (mDisplayNameFirst == name_first) return;
-		mDisplayNameFirst = name_first;
-		notifyDataSetChanged();
-	}
-
-	@Override
-	public void setDisplayProfileImage(final boolean display) {
-		if (display != mDisplayProfileImage) {
-			mDisplayProfileImage = display;
-			notifyDataSetChanged();
-		}
-	}
-
-	@Override
-	public void setLinkHighlightOption(final String option) {
-
-	}
-
-	@Override
 	public void setMaxAnimationPosition(final int position) {
 		mMaxAnimationPosition = position;
 	}
@@ -183,18 +179,7 @@ public class ParcelableUserListsAdapter extends ArrayAdapter<ParcelableUserList>
 		mListener = listener;
 	}
 
-	@Override
-	public void setNicknameOnly(final boolean nickname_only) {
-		if (mNicknameOnly == nickname_only) return;
-		mNicknameOnly = nickname_only;
-		notifyDataSetChanged();
-	}
-
-	@Override
-	public void setTextSize(final float text_size) {
-		if (text_size != mTextSize) {
-			mTextSize = text_size;
-			notifyDataSetChanged();
-		}
+	private static int getItemResource(final boolean compactCards) {
+		return compactCards ? R.layout.card_item_user_list_compact : R.layout.card_item_user_list;
 	}
 }

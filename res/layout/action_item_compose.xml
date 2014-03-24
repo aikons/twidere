@@ -4,22 +4,23 @@
 	style="?android:actionButtonStyle"
 	android:layout_width="wrap_content"
 	android:layout_height="match_parent"
-	android:clickable="true"
-	android:orientation="horizontal">
+	android:contentDescription="@string/send"
+	android:gravity="center"
+	android:orientation="horizontal"
+	android:padding="@dimen/element_spacing_default">
 
-	<org.mariotaku.twidere.view.ComposeTextCountView
-		android:id="@+id/send_text_count"
+	<org.mariotaku.twidere.view.StatusTextCountView
+		android:id="@+id/status_text_count"
 		android:layout_width="wrap_content"
-		android:layout_height="match_parent"
+		android:layout_height="wrap_content"
 		android:gravity="center"
 		android:textAppearance="?android:textAppearanceSmall"/>
 
 	<ImageView
-		android:id="@+id/send_icon"
 		android:layout_width="wrap_content"
-		android:layout_height="match_parent"
+		android:layout_height="wrap_content"
 		android:contentDescription="@string/send"
-		android:scaleType="centerInside"
-		android:src="@android:drawable/ic_menu_send"/>
+		android:padding="@dimen/element_spacing_small"
+		android:src="@drawable/ic_menu_send"/>
 
 </LinearLayout>

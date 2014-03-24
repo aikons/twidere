@@ -24,9 +24,16 @@
 	<PreferenceCategory
 		android:key="cat_donate"
 		android:title="@string/donate">
+		<Preference android:title="@string/donate_via_paypal">
+			<intent
+				android:action="android.intent.action.VIEW"
+				android:data="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&amp;business=mariotaku.lee%40gmail%2ecom&amp;item_name=Donate%20to%20Twidere"/>
+		</Preference>
 		<Preference
-			android:fragment="org.mariotaku.twidere.fragment.DonateFragment"
-			android:title="@string/donate_via_paypal"/>
+			android:fragment="org.mariotaku.twidere.fragment.PayPalDonateFragment"
+			android:summary="@string/pay_via_paypal_summary"
+			android:title="@string/pay_via_paypal">
+		</Preference>
 		<Preference android:title="@string/donate_via_alipay">
 			<intent
 				android:action="android.intent.action.VIEW"
@@ -37,12 +44,12 @@
 			android:title="@string/donators">
 			<intent
 				android:action="android.intent.action.VIEW"
-				android:data="twidere://list_members?list_id=86301024&amp;user_id=583328497&amp;finish_only=true"/>
+				android:data="twidere://user_list_members?list_id=86301024&amp;user_id=583328497&amp;finish_only=true"/>
 		</Preference>
 	</PreferenceCategory>
 	<PreferenceCategory
-		android:key="cat_translators"
-		android:title="@string/translators">
+		android:key="cat_translate"
+		android:title="@string/translate">
 		<Preference android:title="@string/translate">
 			<intent
 				android:action="android.intent.action.VIEW"
@@ -53,7 +60,7 @@
 			android:title="@string/translators">
 			<intent
 				android:action="android.intent.action.VIEW"
-				android:data="twidere://list_members?list_id=99024901&amp;user_id=583328497&amp;finish_only=true"/>
+				android:data="twidere://user_list_members?list_id=99024901&amp;user_id=583328497&amp;finish_only=true"/>
 		</Preference>
 	</PreferenceCategory>
 	<PreferenceCategory android:title="@string/special_thanks_to">

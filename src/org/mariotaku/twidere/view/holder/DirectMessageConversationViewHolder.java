@@ -1,20 +1,20 @@
 /*
- *				Twidere - Twitter client for Android
+ * 				Twidere - Twitter client for Android
  * 
- * Copyright (C) 2012 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mariotaku.twidere.view.holder;
@@ -31,6 +31,7 @@ public class DirectMessageConversationViewHolder extends CardViewHolder {
 	public final View incoming_message_container, outgoing_message_container, incoming_profile_image_container,
 			outgoing_profile_image_container;
 	public final TextView incoming_text, incoming_time, outgoing_text, outgoing_time;
+	public final View incoming_item_menu, outgoing_item_menu;
 	private float text_size;
 
 	public DirectMessageConversationViewHolder(final View view) {
@@ -45,6 +46,8 @@ public class DirectMessageConversationViewHolder extends CardViewHolder {
 		incoming_time = (TextView) findViewById(R.id.incoming_time);
 		outgoing_text = (TextView) findViewById(R.id.outgoing_text);
 		outgoing_time = (TextView) findViewById(R.id.outgoing_time);
+		incoming_item_menu = findViewById(R.id.incoming_item_menu);
+		outgoing_item_menu = findViewById(R.id.outgoing_item_menu);
 	}
 
 	public void setTextSize(final float text_size) {

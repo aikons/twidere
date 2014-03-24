@@ -1,18 +1,18 @@
 /*
  * 				Twidere - Twitter client for Android
- *
- *  Copyright (C) 2012-2013 Mariotaku Lee <mariotaku.lee@gmail.com>
- *
+ * 
+ *  Copyright (C) 2012-2014 Mariotaku Lee <mariotaku.lee@gmail.com>
+ * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
- *
+ * 
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ * 
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -38,7 +38,8 @@ public class ProfileImageBannerLayout extends ExtendedFrameLayout {
 	private static final double PROFILE_IMAGE_TOP_MARGIN_FACTOR = 0.0875;
 
 	private final int mBorderWidth;
-	private final ImageView mProfileBannerImageView, mProfileImageView;
+	private final ImageView mProfileBannerImageView;
+	private final ProfileImageView mProfileImageView;
 
 	public ProfileImageBannerLayout(final Context context) {
 		this(context, null);
@@ -54,7 +55,7 @@ public class ProfileImageBannerLayout extends ExtendedFrameLayout {
 		mProfileBannerImageView = new ProfileBannerImageView(context);
 		mProfileBannerImageView.setId(VIEW_ID_PROFILE_BANNER);
 		addView(mProfileBannerImageView, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
-		mProfileImageView = new ProfileImageView(context, mBorderWidth);
+		mProfileImageView = new ProfileImageViewInternal(context, mBorderWidth);
 		mProfileImageView.setId(VIEW_ID_PROFILE_IMAGE);
 		addView(mProfileImageView, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT,
 				Gravity.CENTER_HORIZONTAL));
@@ -64,7 +65,7 @@ public class ProfileImageBannerLayout extends ExtendedFrameLayout {
 		return mProfileBannerImageView;
 	}
 
-	public ImageView getProfileImageView() {
+	public ProfileImageView getProfileImageView() {
 		return mProfileImageView;
 	}
 
@@ -84,12 +85,12 @@ public class ProfileImageBannerLayout extends ExtendedFrameLayout {
 		}
 	}
 
-	private static class ProfileImageView extends ClickableImageView {
+	private static class ProfileImageViewInternal extends ProfileImageView {
 
 		private final Paint mWhitePaint, mBlackPaint;
 		private final int mPaddings;
 
-		private ProfileImageView(final Context context, final int padding) {
+		private ProfileImageViewInternal(final Context context, final int padding) {
 			super(context, null, 0);
 			ViewCompat.setLayerType(this, LAYER_TYPE_SOFTWARE, null);
 			mWhitePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
